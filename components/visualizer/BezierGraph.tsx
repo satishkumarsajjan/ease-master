@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useRef, useState, useMemo } from 'react';
-import { useEaseStore } from '@/store/useEaseStore';
-import { mathToSvg, svgToMath } from '@/core/transform';
 import { solveSpring } from '@/core/math/spring';
+import { mathToSvg, svgToMath } from '@/core/transform';
+import { useEaseStore } from '@/store/useEaseStore';
+import React, { useMemo, useRef, useState } from 'react';
 
 const CANVAS_SIZE = { width: 500, height: 500, padding: 60 };
 

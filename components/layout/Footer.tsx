@@ -1,4 +1,6 @@
 'use client';
+import { FaMoon, FaSun } from 'react-icons/fa';
+import { AiFillHeart } from 'react-icons/ai';
 import { BsGithub } from 'react-icons/bs';
 
 import { clsx } from 'clsx';
@@ -16,9 +18,10 @@ export const Footer = () => {
 
   return (
     <div className='flex items-center justify-between border-t border-sidebar-border bg-sidebar p-4 text-xs text-sidebar-foreground'>
-      {/* Attribution */}
       <div className='flex items-center gap-1.5 '>
-        <span className=' opacity-60 '>Made by</span>
+        <span className=' opacity-60 '>Made with</span>
+        <AiFillHeart className='size-4 text-red-500' />
+        <span className=' opacity-60 '>by</span>
         <Link
           href='https://satishkumar.xyz/'
           target='_blank'
@@ -31,7 +34,7 @@ export const Footer = () => {
 
       <div className='flex items-center gap-1'>
         <Link
-          href='https://github.com/your-repo'
+          href='https://github.com/satishkumarsajjan/ease-master'
           target='_blank'
           rel='noreferrer'
           className={clsx(
@@ -40,8 +43,7 @@ export const Footer = () => {
           )}
           title='View Source on GitHub'
         >
-          {/* <Github size={14} /> */}
-          <BsGithub />
+          <BsGithub className='size-4' />
         </Link>
 
         <button
@@ -52,7 +54,11 @@ export const Footer = () => {
           )}
           title='Toggle Theme'
         >
-          {mounted && theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          {mounted && theme === 'dark' ? (
+            <FaSun className='size-4' />
+          ) : (
+            <FaMoon className='size-4' />
+          )}
         </button>
       </div>
     </div>

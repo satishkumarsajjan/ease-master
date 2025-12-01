@@ -7,7 +7,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { clsx } from 'clsx';
 
 export const PresetSidebar = () => {
-  // We now pull 'applyPreset' instead of the individual setters
   const { mode, bezier, spring, applyPreset } = useEaseStore();
 
   return (
@@ -41,7 +40,6 @@ export const PresetSidebar = () => {
                       spring={item.value}
                       className={clsx(
                         'h-full w-full stroke-2',
-                        // Using 'chart-2' for Springs to distinguish from Beziers while staying in theme
                         'stroke-chart-2'
                       )}
                     />
@@ -82,7 +80,6 @@ export const PresetSidebar = () => {
                       bezier={item.value}
                       className={clsx(
                         'h-full w-full stroke-2',
-                        // Using 'primary' for Beziers
                         'stroke-chart-5'
                       )}
                     />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEaseStore } from '@/store/useEaseStore';
-import { Info, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Info } from 'lucide-react';
 
 export const InfoPanel = () => {
   const { presetInfo } = useEaseStore();

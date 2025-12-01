@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useEaseStore } from '@/store/useEaseStore';
-import { solveSpring, pointsToLinear } from '@/core/math/spring';
+import { pointsToLinear, solveSpring } from '@/core/math/spring';
 import { ExportTarget } from '@/core/types';
-import { Copy, Check } from 'lucide-react';
+import { useEaseStore } from '@/store/useEaseStore';
 import { clsx } from 'clsx';
+import { Check, Copy } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 const TABS: { id: ExportTarget; label: string }[] = [
   { id: 'css', label: 'CSS' },
@@ -125,15 +125,6 @@ gsap.to(".element", {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  // --- RENDERERS ---
-  // Using semantic theme colors:
-  // chart-1: Yellow/Orangeish (Values)
-  // chart-2: Greenish (Strings)
-  // chart-4: Purpleish (Selectors/Tags)
-  // chart-5: Blueish (Properties)
-  // primary: Key functions (cubic-bezier, linear)
-  // muted-foreground: Punctuation
 
   return (
     <div className='flex h-full w-full flex-col bg-sidebar border-t border-sidebar-border'>

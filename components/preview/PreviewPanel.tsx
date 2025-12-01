@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { pointsToLinear, solveSpring } from '@/core/math/spring';
 import { useEaseStore } from '@/store/useEaseStore';
-import { solveSpring, pointsToLinear } from '@/core/math/spring';
-import {
-  Play,
-  Pause,
-  RotateCcw,
-  Repeat,
-  MoveRight,
-  Maximize,
-  Eye,
-  RotateCw,
-  LayoutGrid,
-} from 'lucide-react';
 import { clsx } from 'clsx';
+import {
+  Eye,
+  LayoutGrid,
+  Maximize,
+  MoveRight,
+  Pause,
+  Play,
+  Repeat,
+  RotateCcw,
+  RotateCw,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 // --- HELPER: GENERIC PREVIEW BOX ---
 const PreviewBox = ({
