@@ -60,6 +60,66 @@ export const BEZIER_PRESETS: Preset<BezierConfig>[] = [
     ],
   },
 
+  // --- MATERIAL DESIGN (Google) ---
+  {
+    id: 'material-standard',
+    label: 'Material Standard',
+    value: { p1: { x: 0.4, y: 0.0 }, p2: { x: 0.2, y: 1 } },
+    description:
+      'The standard curve for Material Design 2. Used for moving elements within the screen bounds.',
+    useCases: ['Tabs switching', 'Card expansion', 'List item reordering'],
+  },
+  {
+    id: 'material-emphasized',
+    label: 'Material Emphasized',
+    value: { p1: { x: 0.2, y: 0.0 }, p2: { x: 0.0, y: 1.0 } },
+    description:
+      'Material 3 Emphasized. A dramatic curve for elements that need to capture attention immediately.',
+    useCases: [
+      'FAB (Floating Action Button)',
+      'Modal openings',
+      'Important alerts',
+    ],
+  },
+  {
+    id: 'material-decelerate',
+    label: 'Material Decelerate',
+    value: { p1: { x: 0.0, y: 0.0 }, p2: { x: 0.2, y: 1 } },
+    description:
+      'Incoming elements. Starts at peak velocity and slows down. Very responsive.',
+    useCases: ['Toasts entering', 'Drawers sliding in', 'New content loading'],
+  },
+  {
+    id: 'material-accelerate',
+    label: 'Material Accelerate',
+    value: { p1: { x: 0.4, y: 0.0 }, p2: { x: 1, y: 1 } },
+    description:
+      'Outgoing elements. Starts moving and keeps accelerating off-screen.',
+    useCases: [
+      'Closing modals',
+      'Deleting list items',
+      'Notifications exiting',
+    ],
+  },
+
+  // --- MODERN / CINEMATIC ---
+  {
+    id: 'ultra-fast',
+    label: 'Ultra Fast',
+    value: { p1: { x: 0.05, y: 0.7 }, p2: { x: 0.1, y: 1 } },
+    description:
+      'Almost instant movement with a tiny amount of smoothing at the very end.',
+    useCases: ['Hover states', 'Micro-interactions', 'Fast feedback'],
+  },
+  {
+    id: 'cinematic-slow',
+    label: 'Cinematic',
+    value: { p1: { x: 0.7, y: 0 }, p2: { x: 0.3, y: 1 } },
+    description:
+      'Slow start, fast middle, slow end. A very exaggerated Ease-In-Out for dramatic effect.',
+    useCases: ['Hero section intros', 'Full-page transitions', 'Logo reveals'],
+  },
+
   // --- GSAP POWER 1 (Quad) ---
   {
     id: 'power1-in',
@@ -237,6 +297,143 @@ export const BEZIER_PRESETS: Preset<BezierConfig>[] = [
 ];
 
 export const SPRING_PRESETS: Preset<SpringConfig>[] = [
+  // --- UI PATTERNS ---
+  {
+    id: 'button',
+    label: 'Button Press',
+    value: { stiffness: 600, damping: 35, mass: 0.5, velocity: 0 },
+    description:
+      'Ultra fast with almost no overshoot. Feels responsive and tactile.',
+    useCases: ['Active buttons', 'Toggle switches', 'Micro-interactions'],
+  },
+  {
+    id: 'toast',
+    label: 'Toast Snap',
+    value: { stiffness: 350, damping: 22, mass: 1, velocity: 0 },
+    description: 'Quick entry with a subtle, friendly settlement.',
+    useCases: ['Notifications', 'Alerts', 'Dropdown lists'],
+  },
+  {
+    id: 'drawer',
+    label: 'Drawer Open',
+    value: { stiffness: 250, damping: 25, mass: 1, velocity: 0 },
+    description: 'Controlled slide with a solid finish.',
+    useCases: ['Sidebars', 'Modals', 'Overlay menus'],
+  },
+
+  // --- OS & FRAMEWORKS ---
+  {
+    id: 'ios-fluid',
+    label: 'Fluid (iOS)',
+    value: { stiffness: 380, damping: 30, mass: 1, velocity: 0 },
+    description:
+      'High energy but perfectly damped. Mimics the "Fluid" feel of modern mobile OS.',
+    useCases: ['Page navigation', 'Swipe gestures', 'App launching'],
+  },
+  {
+    id: 'material-pop',
+    label: 'Soft Pop',
+    value: { stiffness: 280, damping: 18, mass: 1, velocity: 0 },
+    description:
+      'Classic material design feel. Distinct overshoot that feels friendly.',
+    useCases: [
+      'FAB (Floating Action Button)',
+      'Card expansion',
+      'Dialog opening',
+    ],
+  },
+  {
+    id: 'react-default',
+    label: 'React Default',
+    value: { stiffness: 170, damping: 26, mass: 1, velocity: 0 },
+    description:
+      'The standard feel for React Spring. Balanced and slightly soft.',
+    useCases: ['General component transitions', 'List reordering'],
+  },
+
+  // --- NATURAL / ORGANIC ---
+  {
+    id: 'soap-bubble',
+    label: 'Soap Bubble',
+    value: { stiffness: 150, damping: 8, mass: 1.2, velocity: 0 },
+    description:
+      'Wobbly and slow to settle, like a bubble floating in the air.',
+    useCases: ['Playful logos', 'Idle animations', 'Kid-friendly UI'],
+  },
+  {
+    id: 'underwater',
+    label: 'Underwater',
+    value: { stiffness: 60, damping: 30, mass: 2, velocity: 0 },
+    description:
+      'High drag/damping. Movements feel resistant and slow, like moving through water.',
+    useCases: ['Parallax effects', 'Smooth scrolling elements'],
+  },
+  {
+    id: 'rubber-band',
+    label: 'Rubber Band',
+    value: { stiffness: 300, damping: 10, mass: 0.8, velocity: 0 },
+    description: 'High elasticity. Snaps back forth rapidly before settling.',
+    useCases: ['Pull-to-refresh', 'Limit reached feedback'],
+  },
+
+  // --- MECHANICAL ---
+  {
+    id: 'mechanical-arm',
+    label: 'Robot Arm',
+    value: { stiffness: 700, damping: 60, mass: 2, velocity: 0 },
+    description:
+      'High stiffness and high mass. Stops precisely without wobble.',
+    useCases: ['Industrial dashboards', 'Precision tools', 'Grid snapping'],
+  },
+  {
+    id: 'hard-snap',
+    label: 'Hard Snap',
+    value: { stiffness: 800, damping: 45, mass: 1, velocity: 0 },
+    description: 'Instantaneous movement with a harsh stop. No playfulness.',
+    useCases: ['Technical alerts', 'Camera shutters', 'Fast UI changes'],
+  },
+
+  // --- PHYSICAL MATERIALS ---
+  {
+    id: 'heavy',
+    label: 'Heavy Chain',
+    value: { stiffness: 250, damping: 40, mass: 4, velocity: 0 },
+    description:
+      'High mass creates a slow start and a heavy, thud-like finish.',
+    useCases: ['Industrial UI', 'Loading heavy data', 'Draggable elements'],
+  },
+  {
+    id: 'helium',
+    label: 'Helium Balloon',
+    value: { stiffness: 90, damping: 10, mass: 0.5, velocity: 0 },
+    description: 'Low mass and stiffness creates a floaty, drifting effect.',
+    useCases: ['Floating badges', 'Background animations', 'Gentle hovers'],
+  },
+  {
+    id: 'super-bouncy',
+    label: 'Super Bouncy',
+    value: { stiffness: 200, damping: 5, mass: 1, velocity: 0 },
+    description:
+      'Very low damping causes extreme oscillation. Use with caution.',
+    useCases: ['Game UI', 'Success animations', 'Attention grabbers'],
+  },
+
+  // --- SPECIAL EFFECTS ---
+  {
+    id: 'trampoline',
+    label: 'Trampoline',
+    value: { stiffness: 120, damping: 5, mass: 2, velocity: 0 },
+    description: 'Heavy mass on a loose spring. Bounces for a long time.',
+    useCases: ['Loading indicators', 'Playful "Boing" effects'],
+  },
+  {
+    id: 'glitch',
+    label: 'Glitch Vibrate',
+    value: { stiffness: 1000, damping: 15, mass: 0.1, velocity: 0 },
+    description: 'Extreme stiffness and low mass creates a buzzing vibration.',
+    useCases: ['Error states', 'Access denied', 'High tension alerts'],
+  },
+
   // --- GSAP ELASTIC EQUIVALENTS ---
   {
     id: 'elastic-out',

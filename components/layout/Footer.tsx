@@ -1,8 +1,10 @@
 'use client';
+import { BsGithub } from 'react-icons/bs';
 
 import { clsx } from 'clsx';
-import { Github, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export const Footer = () => {
@@ -15,23 +17,21 @@ export const Footer = () => {
   return (
     <div className='flex items-center justify-between border-t border-sidebar-border bg-sidebar p-4 text-xs text-sidebar-foreground'>
       {/* Attribution */}
-      <div className='flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity'>
-        <span>Made by</span>
-        <a
-          href='https://github.com/satish-kumar' // Replace with your actual link
+      <div className='flex items-center gap-1.5 '>
+        <span className=' opacity-60 '>Made by</span>
+        <Link
+          href='https://satishkumar.xyz/'
           target='_blank'
           rel='noreferrer'
-          className='font-medium hover:text-primary hover:underline underline-offset-2'
+          className='font-medium hover:text-primary hover:underline underline-offset-2  opacity-60 hover:opacity-100 transition-opacity'
         >
           Satish Kumar
-        </a>
+        </Link>
       </div>
 
-      {/* Tools */}
       <div className='flex items-center gap-1'>
-        {/* GitHub Link */}
-        <a
-          href='https://github.com/your-repo' // Replace with repo link
+        <Link
+          href='https://github.com/your-repo'
           target='_blank'
           rel='noreferrer'
           className={clsx(
@@ -40,10 +40,10 @@ export const Footer = () => {
           )}
           title='View Source on GitHub'
         >
-          <Github size={14} />
-        </a>
+          {/* <Github size={14} /> */}
+          <BsGithub />
+        </Link>
 
-        {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className={clsx(

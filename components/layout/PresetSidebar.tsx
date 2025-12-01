@@ -83,7 +83,7 @@ export const PresetSidebar = () => {
                       className={clsx(
                         'h-full w-full stroke-2',
                         // Using 'primary' for Beziers
-                        'stroke-primary'
+                        'stroke-chart-5'
                       )}
                     />
                   </div>
