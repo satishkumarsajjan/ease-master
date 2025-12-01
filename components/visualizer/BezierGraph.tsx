@@ -4,7 +4,6 @@ import React, { useRef, useState, useMemo } from 'react';
 import { useEaseStore } from '@/store/useEaseStore';
 import { mathToSvg, svgToMath } from '@/core/transform';
 import { solveSpring } from '@/core/math/spring';
-import { clsx } from 'clsx';
 
 const CANVAS_SIZE = { width: 500, height: 500, padding: 60 };
 
@@ -83,10 +82,6 @@ export const BezierGraph = () => {
     if (!dragging || !svgRef.current) return;
 
     // --- LOGIC 2: COORDINATE MAPPING ---
-    // We must account for the Dynamic ViewBox scaling.
-    // If the ViewBox is 1000px tall but rendered in a 500px CSS container,
-    // moving the mouse 1px equals 2 units in SVG space.
-
     const rect = svgRef.current.getBoundingClientRect();
     const [vbX, vbY, vbW, vbH] = dynamicViewBox.split(' ').map(parseFloat);
 
@@ -119,13 +114,13 @@ export const BezierGraph = () => {
   };
 
   return (
-    <div className='relative w-full aspect-square max-w-[500px] rounded-xl bg-[#1a1a1a] border border-slate-800 shadow-2xl overflow-hidden'>
+    <div className='relative w-full mt-20 aspect-square max-w-[500px] rounded-xl bg-card border border-border shadow-sm overflow-hidden'>
       {/* Grid Pattern Background */}
       <div
-        className='absolute inset-0 opacity-20 pointer-events-none'
+        className='absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none bg-foreground'
         style={{
-          backgroundImage: 'radial-gradient(#555 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
+          maskImage: 'radial-gradient(circle, black 1px, transparent 1px)',
+          maskSize: '20px 20px',
         }}
       ></div>
 
@@ -143,7 +138,7 @@ export const BezierGraph = () => {
           y1={start.y}
           x2={CANVAS_SIZE.width}
           y2={start.y}
-          className='stroke-slate-700 stroke-1 dashed opacity-50'
+          className='stroke-border stroke-1 dashed'
           strokeDasharray='4 4'
         />
         <line
@@ -151,21 +146,26 @@ export const BezierGraph = () => {
           y1={0}
           x2={start.x}
           y2={CANVAS_SIZE.height}
-          className='stroke-slate-700 stroke-1 opacity-50'
+          className='stroke-border stroke-1'
         />
 
-        {/* Target Line (Green Hint) */}
+        {/* Target Line */}
         <line
           x1={0}
           y1={end.y}
           x2={CANVAS_SIZE.width}
           y2={end.y}
-          className='stroke-lime-900/50 stroke-1'
+          className='stroke-primary/20 stroke-1'
         />
 
         {/* Start/End Dots */}
-        <circle cx={start.x} cy={start.y} r={3} className='fill-slate-500' />
-        <circle cx={end.x} cy={end.y} r={3} className='fill-slate-500' />
+        <circle
+          cx={start.x}
+          cy={start.y}
+          r={3}
+          className='fill-muted-foreground'
+        />
+        <circle cx={end.x} cy={end.y} r={3} className='fill-muted-foreground' />
 
         {/* --- CURVES --- */}
         {mode === 'spring' ? (
@@ -173,7 +173,7 @@ export const BezierGraph = () => {
             d={springPath}
             fill='none'
             vectorEffect='non-scaling-stroke'
-            className='stroke-lime-400 stroke-3'
+            className='stroke-primary stroke-3'
             strokeLinecap='round'
             strokeLinejoin='round'
           />
@@ -186,7 +186,7 @@ export const BezierGraph = () => {
               x2={p1.x}
               y2={p1.y}
               vectorEffect='non-scaling-stroke'
-              className='stroke-slate-600 stroke-1'
+              className='stroke-muted-foreground/30 stroke-1'
             />
             <line
               x1={end.x}
@@ -194,7 +194,7 @@ export const BezierGraph = () => {
               x2={p2.x}
               y2={p2.y}
               vectorEffect='non-scaling-stroke'
-              className='stroke-slate-600 stroke-1'
+              className='stroke-muted-foreground/30 stroke-1'
             />
 
             {/* Main Curve */}
@@ -202,7 +202,7 @@ export const BezierGraph = () => {
               d={`M ${start.x} ${start.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${end.x} ${end.y}`}
               fill='none'
               vectorEffect='non-scaling-stroke'
-              className='stroke-lime-400 stroke-4'
+              className='stroke-primary stroke-4'
               strokeLinecap='round'
             />
 
@@ -224,8 +224,8 @@ export const BezierGraph = () => {
                 cx={p1.x}
                 cy={p1.y}
                 r={6}
-                vectorEffect='non-scaling-stroke' // Keeps handle size consistent when zooming
-                className='fill-[#1a1a1a] stroke-lime-400 stroke-2 hover:scale-125 transition-transform'
+                vectorEffect='non-scaling-stroke'
+                className='fill-background stroke-primary stroke-2 hover:scale-125 transition-transform'
               />
             </g>
 
@@ -245,7 +245,7 @@ export const BezierGraph = () => {
                 cy={p2.y}
                 r={6}
                 vectorEffect='non-scaling-stroke'
-                className='fill-[#1a1a1a] stroke-lime-400 stroke-2 hover:scale-125 transition-transform'
+                className='fill-background stroke-primary stroke-2 hover:scale-125 transition-transform'
               />
             </g>
           </>

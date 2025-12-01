@@ -17,7 +17,6 @@ import {
 import { clsx } from 'clsx';
 
 // --- HELPER: GENERIC PREVIEW BOX ---
-// Reusable component for Scale, Opacity, Rotate
 const PreviewBox = ({
   label,
   icon: Icon,
@@ -30,27 +29,27 @@ const PreviewBox = ({
 }: any) => (
   <div
     className={clsx(
-      'relative flex items-center justify-center overflow-hidden bg-[#151515] group border-slate-800',
+      'relative flex items-center justify-center overflow-hidden bg-background group border-border',
       className
     )}
   >
     {/* Label Overlay */}
-    <div className='absolute top-3 left-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 group-hover:text-lime-500/50 transition-colors z-10'>
+    <div className='absolute top-3 left-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors z-10'>
       <Icon size={12} />
       <span>{label}</span>
     </div>
 
     {/* Grid Background */}
     <div
-      className='absolute inset-0 opacity-10'
+      className='absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none bg-foreground'
       style={{
-        backgroundImage: 'radial-gradient(#555 1px, transparent 1px)',
-        backgroundSize: '16px 16px',
+        maskImage: 'radial-gradient(circle, black 1px, transparent 1px)',
+        maskSize: '16px 16px',
       }}
     />
 
     {/* Reference Box (Ghost) */}
-    <div className='absolute h-16 w-16 rounded bg-slate-800/20 border border-slate-700/30' />
+    <div className='absolute h-16 w-16 rounded bg-muted/50 border border-border' />
 
     {/* Moving Box */}
     <div
@@ -62,10 +61,10 @@ const PreviewBox = ({
         animationFillMode: 'forwards',
         animationPlayState: isPlaying ? 'running' : 'paused',
       }}
-      className='h-16 w-16 rounded bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.2)]'
+      className='h-16 w-16 rounded bg-primary shadow-lg shadow-primary/20'
     >
       <div className='absolute inset-0 flex items-center justify-center'>
-        <div className='h-1 w-1 bg-black/20 rounded-full' />
+        <div className='h-1.5 w-1.5 bg-background/30 rounded-full' />
       </div>
     </div>
   </div>
@@ -77,7 +76,7 @@ export const PreviewPanel = () => {
   // State
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLooping, setIsLooping] = useState(true);
-  const [activeView, setActiveView] = useState('translate'); // 'translate' | 'scale' | 'opacity' | 'rotate' | 'all'
+  const [activeView, setActiveView] = useState('translate');
   const [key, setKey] = useState(0);
   const [loopDelay, setLoopDelay] = useState(500);
 
@@ -110,8 +109,12 @@ export const PreviewPanel = () => {
     setKey((k) => k + 1);
   };
 
+  // Reusable slider class
+  const sliderClass =
+    'flex-1 h-1.5 bg-secondary rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background transition-all hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed';
+
   return (
-    <div className='flex h-full w-full flex-col bg-[#1e1e1e] text-white'>
+    <div className='flex h-full w-full flex-col bg-card text-card-foreground'>
       {/* --- CSS Keyframes Injection --- */}
       <style>{`
         @keyframes anim-translate { from { transform: translateX(0); } to { transform: translateX(calc(100cqw - 4rem)); } }
@@ -122,14 +125,14 @@ export const PreviewPanel = () => {
       `}</style>
 
       {/* HEADER */}
-      <div className='flex items-center justify-between border-b border-slate-800 p-4'>
+      <div className='flex items-center justify-between border-b border-border p-4 bg-muted/20'>
         <div className='flex items-center gap-6'>
-          <h2 className='text-sm font-bold text-lime-400 font-mono tracking-wider hidden md:block'>
+          <h2 className='text-sm font-bold text-primary font-mono tracking-wider hidden md:block'>
             Preview
           </h2>
 
-          {/* View Selector (The "Tabs") */}
-          <div className='flex bg-[#121212] rounded-md p-0.5 border border-slate-700'>
+          {/* View Selector */}
+          <div className='flex bg-input/50 rounded-md p-0.5 border border-input'>
             {[
               { id: 'translate', icon: MoveRight, tooltip: 'Position' },
               { id: 'scale', icon: Maximize, tooltip: 'Scale' },
@@ -146,15 +149,15 @@ export const PreviewPanel = () => {
                 className={clsx(
                   'p-1.5 rounded transition-all flex items-center justify-center w-8',
                   activeView === item.id
-                    ? 'bg-slate-700 text-lime-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-300'
+                    ? 'bg-background text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <item.icon size={14} />
               </button>
             ))}
 
-            <div className='w-px bg-slate-700 mx-1 my-1'></div>
+            <div className='w-px bg-border mx-1 my-1'></div>
 
             {/* "View All" Button */}
             <button
@@ -166,8 +169,8 @@ export const PreviewPanel = () => {
               className={clsx(
                 'p-1.5 rounded transition-all flex items-center justify-center w-8',
                 activeView === 'all'
-                  ? 'bg-slate-700 text-lime-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-background text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <LayoutGrid size={14} />
@@ -180,7 +183,9 @@ export const PreviewPanel = () => {
             onClick={() => setIsLooping(!isLooping)}
             className={clsx(
               'p-1 transition-colors',
-              isLooping ? 'text-lime-400' : 'text-slate-500'
+              isLooping
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             )}
             title='Loop'
           >
@@ -188,14 +193,14 @@ export const PreviewPanel = () => {
           </button>
           <button
             onClick={handleReplay}
-            className='p-1 hover:text-lime-400 text-slate-400'
+            className='p-1 hover:text-primary text-muted-foreground transition-colors'
             title='Replay'
           >
             <RotateCcw size={14} />
           </button>
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className='p-1 hover:text-lime-400 text-slate-400'
+            className='p-1 hover:text-primary text-muted-foreground transition-colors'
             title='Play/Pause'
           >
             {isPlaying ? <Pause size={14} /> : <Play size={14} />}
@@ -204,36 +209,34 @@ export const PreviewPanel = () => {
       </div>
 
       {/* --- MAIN CANVAS AREA --- */}
-      <div className='flex-1 relative overflow-hidden bg-[#151515] flex'>
+      <div className='flex-1 relative overflow-hidden bg-background/50 flex'>
         {/* 1. TRANSLATE TRACK */}
-        {/* Visible if view is 'translate' OR 'all' */}
         <div
           className={clsx(
-            'relative flex-col items-center justify-center bg-[#151515] p-6 transition-all duration-300',
+            'relative flex-col items-center justify-center bg-background/50 p-6 transition-all duration-300',
             activeView === 'translate'
               ? 'flex w-full h-full'
               : activeView === 'all'
-              ? 'flex w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-slate-800'
+              ? 'flex w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-border'
               : 'hidden'
           )}
         >
-          <div className='absolute top-3 left-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-600'>
+          <div className='absolute top-3 left-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
             <MoveRight size={12} />
             <span>Position</span>
           </div>
 
           <div
-            className='absolute inset-0 opacity-10'
+            className='absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none bg-foreground'
             style={{
-              backgroundImage:
-                'linear-gradient(#444 1px, transparent 1px), linear-gradient(90deg, #444 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
+              maskImage: 'radial-gradient(circle, black 1px, transparent 1px)',
+              maskSize: '40px 40px',
             }}
           />
 
           <div className='relative w-full h-32 flex items-center preview-container'>
-            <div className='absolute left-0 h-16 w-16 rounded bg-slate-800/30 border border-slate-700/50' />
-            <div className='absolute right-0 h-16 w-16 rounded bg-slate-800/30 border border-slate-700/50' />
+            <div className='absolute left-0 h-16 w-16 rounded bg-muted/50 border border-border' />
+            <div className='absolute right-0 h-16 w-16 rounded bg-muted/50 border border-border' />
             <div className='relative w-full h-full'>
               <div
                 key={key}
@@ -244,10 +247,10 @@ export const PreviewPanel = () => {
                   animationFillMode: 'forwards',
                   animationPlayState: isPlaying ? 'running' : 'paused',
                 }}
-                className='absolute top-1/2 -mt-8 left-0 h-16 w-16 rounded bg-lime-500 shadow-[0_0_20px_rgba(132,204,22,0.3)]'
+                className='absolute top-1/2 -mt-8 left-0 h-16 w-16 rounded bg-primary shadow-xl shadow-primary/25'
               >
                 <div className='absolute inset-0 flex items-center justify-center'>
-                  <div className='h-1 w-1 bg-black/20 rounded-full' />
+                  <div className='h-1.5 w-1.5 bg-background/30 rounded-full' />
                 </div>
               </div>
             </div>
@@ -255,10 +258,9 @@ export const PreviewPanel = () => {
         </div>
 
         {/* 2. SECONDARY BOXES */}
-        {/* Container: In 'all' mode it's a 1/3 col. In 'single' mode, it fills parent if active. */}
         <div
           className={clsx(
-            'bg-[#121212]',
+            'bg-background',
             activeView === 'all'
               ? 'flex w-full lg:w-1/3 flex-col h-full'
               : 'contents'
@@ -277,7 +279,7 @@ export const PreviewPanel = () => {
               activeView === 'scale'
                 ? 'w-full h-full flex'
                 : activeView === 'all'
-                ? 'flex-1 border-b'
+                ? 'flex-1 border-b border-border'
                 : 'hidden'
             )}
           />
@@ -294,7 +296,7 @@ export const PreviewPanel = () => {
               activeView === 'opacity'
                 ? 'w-full h-full flex'
                 : activeView === 'all'
-                ? 'flex-1 border-b'
+                ? 'flex-1 border-b border-border'
                 : 'hidden'
             )}
           />
@@ -319,9 +321,9 @@ export const PreviewPanel = () => {
       </div>
 
       {/* SLIDERS */}
-      <div className='border-t border-slate-800 p-4 space-y-3 bg-[#1e1e1e] z-10'>
+      <div className='border-t border-border p-4 space-y-3 bg-card z-10'>
         <div className='flex items-center gap-4'>
-          <label className='w-24 text-[10px] uppercase tracking-widest text-slate-500 font-bold'>
+          <label className='w-24 text-[10px] uppercase tracking-widest text-muted-foreground font-bold'>
             Duration
           </label>
           <input
@@ -332,14 +334,9 @@ export const PreviewPanel = () => {
             disabled={mode === 'spring'}
             value={mode === 'spring' ? calculatedDuration : duration}
             onChange={(e) => setDuration(parseFloat(e.target.value))}
-            className={clsx(
-              'flex-1 h-1 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full',
-              mode === 'spring'
-                ? 'bg-slate-800 [&::-webkit-slider-thumb]:bg-slate-600 cursor-not-allowed'
-                : 'bg-slate-700 [&::-webkit-slider-thumb]:bg-lime-400'
-            )}
+            className={sliderClass}
           />
-          <span className='w-12 text-right text-xs font-mono text-slate-300'>
+          <span className='w-12 text-right text-xs font-mono text-primary'>
             {(mode === 'spring' ? calculatedDuration : duration).toFixed(1)}s
           </span>
         </div>
@@ -350,7 +347,7 @@ export const PreviewPanel = () => {
             isLooping ? 'opacity-100' : 'opacity-30 pointer-events-none'
           )}
         >
-          <label className='w-24 text-[10px] uppercase tracking-widest text-slate-500 font-bold'>
+          <label className='w-24 text-[10px] uppercase tracking-widest text-muted-foreground font-bold'>
             Loop Delay
           </label>
           <input
@@ -360,9 +357,9 @@ export const PreviewPanel = () => {
             step='100'
             value={loopDelay}
             onChange={(e) => setLoopDelay(parseInt(e.target.value))}
-            className='flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-lime-400 [&::-webkit-slider-thumb]:rounded-full'
+            className={sliderClass}
           />
-          <span className='w-12 text-right text-xs font-mono text-slate-300'>
+          <span className='w-12 text-right text-xs font-mono text-primary'>
             {loopDelay}ms
           </span>
         </div>
