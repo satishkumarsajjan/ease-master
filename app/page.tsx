@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <main className='flex h-screen w-screen overflow-hidden bg-[#121212] text-white font-sans selection:bg-lime-500/30'>
       {/* 1. LEFT SIDEBAR (Presets) */}
-      <aside className='w-[320px] flex-shrink-0 border-r border-slate-800 bg-[#1e1e1e]'>
+      <aside className='w-[320px] shrink-0 border-r border-slate-800 bg-[#1e1e1e]'>
         <PresetSidebar />
       </aside>
 
@@ -40,7 +40,7 @@ export default function Home() {
       </section>
 
       {/* 3. RIGHT SIDEBAR (Export Only) */}
-      <aside className='w-[380px] flex-shrink-0 flex flex-col border-l border-slate-800 bg-[#181818]'>
+      <aside className='w-[380px] shrink-0 flex flex-col border-l border-slate-800 bg-[#181818]'>
         {/* TOP: Info Panel (Dynamic Height or Fixed) */}
         <div className='min-h-[250px]'>
           <InfoPanel />

@@ -19,44 +19,58 @@ export const BezierGraph = () => {
   const p1 = mathToSvg(bezier.p1, CANVAS_SIZE);
   const p2 = mathToSvg(bezier.p2, CANVAS_SIZE);
 
-  // Math: Spring Path & Dynamic ViewBox
+  // --- LOGIC 1: DYNAMIC VIEWBOX (Auto-Zoom) ---
   const { springPath, dynamicViewBox } = useMemo(() => {
     let viewBox = `0 0 ${CANVAS_SIZE.width} ${CANVAS_SIZE.height}`;
     let path = '';
+
+    // Track min/max pixels to determine if we need to zoom out
+    let minPixelY = 0; // Top of standard canvas
+    let maxPixelY = CANVAS_SIZE.height; // Bottom of standard canvas
 
     if (mode === 'spring') {
       const result = solveSpring(spring.mass, spring.stiffness, spring.damping);
       const points = result.points;
 
-      // Calculate bounds for zoom
-      let minPixelY = Infinity;
-      let maxPixelY = -Infinity;
-
       path = points
         .map((val, index) => {
           const mathX = index / (points.length - 1);
           const svgPoint = mathToSvg({ x: mathX, y: val }, CANVAS_SIZE);
+
+          // Track Bounds
           if (svgPoint.y < minPixelY) minPixelY = svgPoint.y;
           if (svgPoint.y > maxPixelY) maxPixelY = svgPoint.y;
+
           return `${index === 0 ? 'M' : 'L'} ${svgPoint.x} ${svgPoint.y}`;
         })
         .join(' ');
+    } else if (mode === 'bezier') {
+      // Calculate Bezier Handle Bounds
+      const p1Svg = mathToSvg(bezier.p1, CANVAS_SIZE);
+      const p2Svg = mathToSvg(bezier.p2, CANVAS_SIZE);
 
-      const paddingBuffer = 40;
-      const requiredTop = Math.min(0, minPixelY - paddingBuffer);
-      const requiredBottom = Math.max(
-        CANVAS_SIZE.height,
-        maxPixelY + paddingBuffer
-      );
-      viewBox = `0 ${requiredTop} ${CANVAS_SIZE.width} ${
-        requiredBottom - requiredTop
-      }`;
+      // Check if handles go outside standard bounds
+      minPixelY = Math.min(0, p1Svg.y, p2Svg.y);
+      maxPixelY = Math.max(CANVAS_SIZE.height, p1Svg.y, p2Svg.y);
     }
 
-    return { springPath: path, dynamicViewBox: viewBox };
-  }, [mode, spring]);
+    // Apply Padding/Buffer so handles aren't cut off exactly at the edge
+    const paddingBuffer = 40;
+    const requiredTop = Math.min(0, minPixelY - paddingBuffer);
+    const requiredBottom = Math.max(
+      CANVAS_SIZE.height,
+      maxPixelY + paddingBuffer
+    );
+    const newHeight = requiredBottom - requiredTop;
 
-  // Handlers
+    // ViewBox: min-x, min-y, width, height
+    viewBox = `0 ${requiredTop} ${CANVAS_SIZE.width} ${newHeight}`;
+
+    return { springPath: path, dynamicViewBox: viewBox };
+  }, [mode, bezier, spring]);
+
+  // --- INTERACTION HANDLERS ---
+
   const handlePointerDown = (e: React.PointerEvent, handle: 'p1' | 'p2') => {
     if (mode === 'spring') return;
     e.preventDefault();
@@ -67,23 +81,31 @@ export const BezierGraph = () => {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragging || !svgRef.current) return;
+
+    // --- LOGIC 2: COORDINATE MAPPING ---
+    // We must account for the Dynamic ViewBox scaling.
+    // If the ViewBox is 1000px tall but rendered in a 500px CSS container,
+    // moving the mouse 1px equals 2 units in SVG space.
+
     const rect = svgRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const [vbX, vbY, vbW, vbH] = dynamicViewBox.split(' ').map(parseFloat);
 
-    // Calculate Scale Factor (Responsive Fix)
-    const scaleX = CANVAS_SIZE.width / rect.width;
-    const scaleY =
-      (dynamicViewBox.split(' ')[3]
-        ? parseFloat(dynamicViewBox.split(' ')[3])
-        : CANVAS_SIZE.height) / rect.height;
+    // Calculate Ratio (SVG Units per Screen Pixel)
+    const scaleX = vbW / rect.width;
+    const scaleY = vbH / rect.height;
 
-    // We only need to account for scale if we were doing complex zoom logic on drag,
-    // but for the Bezier mode (fixed viewbox), standard mapping works if we assume the SVG fills the container.
-    // For simplicity in this dark theme, we'll rely on the standard transform.
+    // 1. Get Mouse relative to top-left of SVG Element (Screen Pixels)
+    const clientX = e.clientX - rect.left;
+    const clientY = e.clientY - rect.top;
 
-    const rawMathPoint = svgToMath({ x, y }, CANVAS_SIZE); // Note: This might need scaling adjustment in a real resize scenario
+    // 2. Convert to SVG Coordinate Space (Apply Scaling + ViewBox Offset)
+    const svgX = vbX + clientX * scaleX;
+    const svgY = vbY + clientY * scaleY;
 
+    // 3. Convert SVG Coordinate to Math Value (0-1) using existing helper
+    const rawMathPoint = svgToMath({ x: svgX, y: svgY }, CANVAS_SIZE);
+
+    // 4. Update Store (Clamp X to 0-1, allow Y to be anything)
     updateBezier(dragging, {
       x: Math.max(0, Math.min(1, rawMathPoint.x)),
       y: rawMathPoint.y,
@@ -116,7 +138,6 @@ export const BezierGraph = () => {
         onPointerUp={handlePointerUp}
       >
         {/* --- AXES --- */}
-        {/* Baseline (0) and Topline (1) */}
         <line
           x1={0}
           y1={start.y}
@@ -152,18 +173,19 @@ export const BezierGraph = () => {
             d={springPath}
             fill='none'
             vectorEffect='non-scaling-stroke'
-            className='stroke-lime-400 stroke-[3]'
+            className='stroke-lime-400 stroke-3'
             strokeLinecap='round'
             strokeLinejoin='round'
           />
         ) : (
           <>
-            {/* Arms */}
+            {/* Arms - Note: We use vector-effect so lines stay thin when zoomed out */}
             <line
               x1={start.x}
               y1={start.y}
               x2={p1.x}
               y2={p1.y}
+              vectorEffect='non-scaling-stroke'
               className='stroke-slate-600 stroke-1'
             />
             <line
@@ -171,6 +193,7 @@ export const BezierGraph = () => {
               y1={end.y}
               x2={p2.x}
               y2={p2.y}
+              vectorEffect='non-scaling-stroke'
               className='stroke-slate-600 stroke-1'
             />
 
@@ -178,7 +201,8 @@ export const BezierGraph = () => {
             <path
               d={`M ${start.x} ${start.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${end.x} ${end.y}`}
               fill='none'
-              className='stroke-lime-400 stroke-[4]'
+              vectorEffect='non-scaling-stroke'
+              className='stroke-lime-400 stroke-4'
               strokeLinecap='round'
             />
 
@@ -187,11 +211,20 @@ export const BezierGraph = () => {
               className='cursor-grab active:cursor-grabbing'
               onPointerDown={(e) => handlePointerDown(e, 'p1')}
             >
-              <circle cx={p1.x} cy={p1.y} r={15} fill='transparent' />
+              {/* Invisible Hit Area (Large) */}
+              <circle
+                cx={p1.x}
+                cy={p1.y}
+                r={30}
+                fill='transparent'
+                vectorEffect='non-scaling-stroke'
+              />
+              {/* Visible Handle */}
               <circle
                 cx={p1.x}
                 cy={p1.y}
                 r={6}
+                vectorEffect='non-scaling-stroke' // Keeps handle size consistent when zooming
                 className='fill-[#1a1a1a] stroke-lime-400 stroke-2 hover:scale-125 transition-transform'
               />
             </g>
@@ -200,11 +233,18 @@ export const BezierGraph = () => {
               className='cursor-grab active:cursor-grabbing'
               onPointerDown={(e) => handlePointerDown(e, 'p2')}
             >
-              <circle cx={p2.x} cy={p2.y} r={15} fill='transparent' />
+              <circle
+                cx={p2.x}
+                cy={p2.y}
+                r={30}
+                fill='transparent'
+                vectorEffect='non-scaling-stroke'
+              />
               <circle
                 cx={p2.x}
                 cy={p2.y}
                 r={6}
+                vectorEffect='non-scaling-stroke'
                 className='fill-[#1a1a1a] stroke-lime-400 stroke-2 hover:scale-125 transition-transform'
               />
             </g>
