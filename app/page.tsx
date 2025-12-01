@@ -3,6 +3,7 @@ import { BezierGraph } from '@/components/visualizer/BezierGraph';
 import { ControlsBar } from '@/components/layout/ControlsBar';
 import { PreviewPanel } from '@/components/preview/PreviewPanel';
 import { ExportPanel } from '@/components/export/ExportPanel';
+import { InfoPanel } from '@/components/info/InfoPanel';
 
 export default function Home() {
   return (
@@ -40,8 +41,15 @@ export default function Home() {
 
       {/* 3. RIGHT SIDEBAR (Export Only) */}
       <aside className='w-[380px] flex-shrink-0 flex flex-col border-l border-slate-800 bg-[#181818]'>
-        {/* Export Panel now takes full height */}
-        <ExportPanel />
+        {/* TOP: Info Panel (Dynamic Height or Fixed) */}
+        <div className='min-h-[250px]'>
+          <InfoPanel />
+        </div>
+
+        {/* BOTTOM: Export Panel (Fills rest) */}
+        <div className='flex-1 min-h-0'>
+          <ExportPanel />
+        </div>
       </aside>
     </main>
   );

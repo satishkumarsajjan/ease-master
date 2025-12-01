@@ -7,17 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { clsx } from 'clsx';
 
 export const PresetSidebar = () => {
-  const { mode, bezier, spring, setMode, setBezierConfig, setSpringConfig } =
-    useEaseStore();
-
-  // Helper to check if a preset is currently active
-  const isActive = (id: string, currentMode: 'bezier' | 'spring') => {
-    if (mode !== currentMode) return false;
-    // In a real app, we might compare values, but checking ID logic would require storing ID in store.
-    // For now, we will just let the user click.
-    // (Optimization: You could add 'selectedPresetId' to your store later)
-    return false;
-  };
+  // We now pull 'applyPreset' instead of the individual setters
+  const { mode, bezier, spring, applyPreset } = useEaseStore();
 
   return (
     <div className='flex h-full w-full flex-col border-r border-slate-800 bg-[#1e1e1e] text-white'>
@@ -32,16 +23,15 @@ export const PresetSidebar = () => {
               {SPRING_PRESETS.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setMode('spring');
-                    setSpringConfig(item.value);
-                  }}
+                  // FIX: Use applyPreset to update Mode + Config + Info all at once
+                  onClick={() => applyPreset('spring', item)}
                   className={clsx(
                     'group flex flex-col items-center gap-2 rounded-md p-2 transition-all hover:bg-slate-800',
-                    // Simple active state check: if mode is spring and stiffness matches (naive check)
+                    // Active State Logic: Check Mode + Stiffness + Damping + Mass
                     mode === 'spring' &&
                       spring.stiffness === item.value.stiffness &&
-                      spring.damping === item.value.damping
+                      spring.damping === item.value.damping &&
+                      spring.mass === item.value.mass
                       ? 'bg-slate-800 ring-1 ring-lime-400'
                       : 'bg-transparent'
                   )}
@@ -52,7 +42,6 @@ export const PresetSidebar = () => {
                       spring={item.value}
                       className={clsx(
                         'h-full w-full stroke-2',
-                        // Use the orange color from the image for springs
                         'stroke-orange-400'
                       )}
                     />
@@ -74,15 +63,16 @@ export const PresetSidebar = () => {
               {BEZIER_PRESETS.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setMode('bezier');
-                    setBezierConfig(item.value);
-                  }}
+                  // FIX: Use applyPreset to update Mode + Config + Info all at once
+                  onClick={() => applyPreset('bezier', item)}
                   className={clsx(
                     'group flex flex-col items-center gap-2 rounded-md p-2 transition-all hover:bg-slate-800',
+                    // Active State Logic: Check Mode + P1 + P2
                     mode === 'bezier' &&
                       bezier.p1.x === item.value.p1.x &&
-                      bezier.p2.x === item.value.p2.x
+                      bezier.p1.y === item.value.p1.y &&
+                      bezier.p2.x === item.value.p2.x &&
+                      bezier.p2.y === item.value.p2.y
                       ? 'bg-slate-800 ring-1 ring-lime-400'
                       : 'bg-transparent'
                   )}
@@ -93,7 +83,6 @@ export const PresetSidebar = () => {
                       bezier={item.value}
                       className={clsx(
                         'h-full w-full stroke-2',
-                        // Use the lime/green color from the image for beziers
                         'stroke-lime-400'
                       )}
                     />
