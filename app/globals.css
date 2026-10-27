@@ -1,122 +1,687 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
+/* =======================================================
+   DESIGN SYSTEM TOKENS (The Primitives)
+   ======================================================= */
+:root {
+  /* STRUCTURAL GRAYS (Clean, C=0) */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.14 0 0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.14 0 0);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.14 0 0);
+
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.14 0 0);
+
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.14 0 0);
+
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --overlay: oklch(0.14 0 0 / 0.2);
+
+  /* INTENT COLORS (Primary Orange) */
+  --primary: oklch(0.6404 0.2153 35.9003);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.6404 0.2153 35.9003);
+
+  /* SATISIUM BRAND IDENTITY (Signature Umbrella Platform Vermillion) */
+  --brand: oklch(0.6404 0.2153 35.9003);
+  --brand-foreground: oklch(1 0 0);
+  /* Physical Paper Fold Shadow for LandingBox Tab (2XL Elevation) */
+  --tab-fold-shadow:
+    0 -12px 32px -4px oklch(0 0 0 / 0.22), 0 -4px 12px -2px oklch(0 0 0 / 0.12),
+    inset 0 -2px 3px oklch(0 0 0 / 0.15);
+
+  --destructive: oklch(0.6 0.18 25);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* SIDEBAR (Structural grays + Primary Intent) */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.14 0 0);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent-foreground: oklch(0.14 0 0);
+  --sidebar-primary: oklch(0.6404 0.2153 35.9003);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.6404 0.2153 35.9003);
+
+  /* CHARTS */
+  --chart-1: oklch(0.6404 0.2153 35.9003);
+  --chart-2: oklch(0.8231 0.0995 30.7543);
+  --chart-3: oklch(0.7336 0.1758 50.5517);
+  --chart-4: oklch(0.5828 0.1809 259.7276);
+  --chart-5: oklch(0.886 0.123 84.7452);
+
+  /* GEOMETRY & SPACING */
+  --radius: 1.4rem;
+  --spacing: 0.25rem;
+
+  /* DOCS SHELL GEOMETRY
+   ---------------------------------------------------------------------------
+   Derived, not chosen. Reading comfort is a function of line length — 45-75
+   characters, which at 16px body text is roughly 700px. `--docs-measure` is the
+   anchor and everything else falls out of it:
+
+     prose 736 + toc 200 + gap 48 + chrome 16 = 1000  ->  TOC appears at 1000
+     + sidebar 240                                  =  1280  ->  sidebar at xl
+     + aside 200                                    =  1500+ ->  aside at 2xl
+
+   Those land on Tailwind's own `lg`, `xl` and `2xl`. Use those, not magic
+   numbers. The test is that the article's width must NOT change as the window
+   grows: the rails absorb the growth, the article holds still.
+
+   The rails are `clamp()` rather than fixed pixels for the same reason — a fixed
+   rail makes the article `viewport - constant`, i.e. a rubber band.
+
+   --docs-pane-gap drives BOTH the screen's outer margin and the gutter between
+   panes. That equality is what makes separate panes read as one object. */
+  --docs-pane-gap: 0.25rem;
+  --docs-sidebar-w: clamp(15rem, 17vw, 20rem); /*  240 -> 320 */
+  --docs-aside-w: clamp(12.5rem, 13vw, 17.5rem); /*  200 -> 280 */
+  --docs-toc-w: clamp(12.5rem, 13vw, 16.25rem); /*  200 -> 260 */
+
+  /* The reading measure and article geometry.
+     Calibrated so content and TOC fill the canvas comfortably with balanced symmetry. */
+  --docs-measure: 48rem; /* 768px — comfortable reading measure within 45-75 chars */
+  --docs-article-gap: 3rem; /* 48px */
+  --docs-article-padding: 4rem; /* 64px — matches sm:px-8 (2rem * 2) */
+  --docs-article-max: calc(
+    var(--docs-measure) + var(--docs-toc-w) + var(--docs-article-gap) +
+      var(--docs-article-padding)
+  );
+
+  /* ELEVATION
+     No shadows anywhere in this project (BUILD.md hard rule 9a). Depth comes
+     from the achromatic surface ramp instead — sunken is --muted, base is
+     --background, raised is --accent. Every shadow token is neutralised so a
+     stray shadow-* class renders nothing rather than reintroducing a stroke. */
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+
+  /* Physical Floating Monolith Elevation for LandingBox Box 1 (Zero borders, zero shadows) */
+  --monolith-shadow: none;
+}
+
+.dark {
+  /* STRUCTURAL GRAYS (Off-black L=0.14 for premium feel) */
+  --background: oklch(0.14 0 0);
+  --foreground: oklch(0.98 0 0);
+
+  --card: oklch(0.14 0 0);
+  --card-foreground: oklch(0.98 0 0);
+
+  --popover: oklch(0.16 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+
+  --muted: oklch(0.1684 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+
+  --accent: oklch(0.2 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.22 0 0);
+  --input: oklch(0.22 0 0);
+  --overlay: oklch(0 0 0 / 0.5);
+
+  /* INTENT COLORS */
+  --primary: oklch(0.6404 0.2153 35.9003);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.6404 0.2153 35.9003);
+
+  /* SATISIUM BRAND IDENTITY (Signature Umbrella Platform Vermillion) */
+  --brand: oklch(0.6404 0.2153 35.9003);
+  --brand-foreground: oklch(1 0 0);
+  /* Physical Paper Fold Shadow for LandingBox Tab (2XL Elevation) */
+  --tab-fold-shadow:
+    0 -16px 40px -4px oklch(0 0 0 / 0.65), 0 -6px 16px -2px oklch(0 0 0 / 0.45),
+    inset 0 -2px 3px oklch(0 0 0 / 0.25);
+
+  --destructive: oklch(0.6 0.18 25);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* SIDEBAR */
+  --sidebar: oklch(0.14 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.22 0 0);
+  --sidebar-accent: oklch(0.2 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.6404 0.2153 35.9003);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: oklch(0.6404 0.2153 35.9003);
+
+  /* CHARTS */
+  --chart-1: oklch(0.6404 0.2153 35.9003);
+  --chart-2: oklch(0.8565 0.1745 94.9076);
+  --chart-3: oklch(0.8077 0.1035 19.5706);
+  --chart-4: oklch(0.6691 0.1569 260.1063);
+  --chart-5: oklch(0.886 0.123 84.7452);
+
+  /* Physical Floating Monolith Elevation for LandingBox Box 1 (Zero borders, zero shadows) */
+  --monolith-shadow: none;
+}
+
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  /* Sidebar Colors */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Typography Setup */
+  --font-brand: var(--font-brand), sans-serif;
+  --font-display: var(--font-heading), ui-sans-serif, system-ui;
+  --font-heading: var(--font-heading), ui-sans-serif, system-ui;
+  --font-body: var(--font-body), ui-sans-serif, system-ui;
+  --font-code: var(--font-code), ui-monospace, monospace;
+  --font-caveat: var(--font-caveat), "Caveat", cursive;
+
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+
+  --text-caption: 0.79rem;
+  --text-sm: 0.889rem;
+  --text-base: 1rem;
+  --text-h6: 1.125rem;
+  --text-h5: 1.266rem;
+  --text-h4: 1.424rem;
+  --text-h3: 1.602rem;
+  --text-h2: 1.802rem;
+  --text-h1: 2.027rem;
+  --text-display-sm: 2.281rem;
+  --text-display: 2.566rem;
+  --text-display-lg: 2.887rem;
+
+  /* Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Shadows */
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+
+  /* Motion & Animation Variables */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --duration-display: 600ms;
+
+  --ease-spring: cubic-bezier(0.3, 1.5, 0.5, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snap: cubic-bezier(0.2, 1, 0.2, 1);
+  --ease-cinematic: cubic-bezier(0.65, 0, 0.076, 1);
+
+  --animate-in: fade-in var(--duration-normal) var(--ease-out-expo);
+  --animate-slide-up: slide-up var(--duration-normal) var(--ease-spring);
+  --animate-shimmer: shimmer 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-marquee: marquee var(--marquee-duration, 35s) linear infinite;
+  --animate-marquee-reverse: marquee-reverse var(--marquee-duration, 35s) linear
+    infinite;
 }
 
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+/* Keyframes mapped to Tailwind v4 theme */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+@keyframes slide-up {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-reverse {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    /* Smooth rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--foreground);
+  }
+
+  h1 {
+    font-size: var(--text-h1);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: var(--text-h2);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-size: var(--text-h3);
+    line-height: 1.3;
+  }
+  h4 {
+    font-size: var(--text-h4);
+    line-height: 1.4;
+  }
+  h5 {
+    font-size: var(--text-h5);
+    line-height: 1.5;
+  }
+  h6 {
+    font-size: var(--text-h6);
+    line-height: 1.5;
+  }
+
+  small {
+    font-size: var(--text-sm);
+    font-family: var(--font-body);
+  }
+  caption {
+    font-size: var(--text-caption);
+    font-family: var(--font-body);
+  }
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-code);
+    font-size: var(--text-sm);
+  }
+}
+
+/* =======================================================
+   TYPOGRAPHY UTILITIES (WITH BOUNDING BOX FIX)
+   ======================================================= */
+@layer utilities {
+  .font-crop {
+    line-height: 0.85;
+    overflow: visible;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+    -webkit-text-box-trim: trim-both;
+  }
+
+  .text-display-lg {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    line-height: 0.85;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+    -webkit-text-box-trim: trim-both;
+    font-size: var(--text-h1);
+    @variant md {
+      font-size: var(--text-display);
+    }
+    @variant lg {
+      font-size: var(--text-display-lg);
+    }
+  }
+
+  .text-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    line-height: 0.85;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+    -webkit-text-box-trim: trim-both;
+    font-size: var(--text-h2);
+    @variant md {
+      font-size: var(--text-display-sm);
+    }
+    @variant lg {
+      font-size: var(--text-display);
+    }
+  }
+
+  .text-display-sm {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-wrap: balance;
+    line-height: 0.85;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+    -webkit-text-box-trim: trim-both;
+    font-size: var(--text-h3);
+    @variant md {
+      font-size: var(--text-h1);
+    }
+    @variant lg {
+      font-size: var(--text-display-sm);
+    }
+  }
+  /* Scrollbar suppression utility & Landing page scrollbar removal */
+  html.no-scrollbar,
+  body.no-scrollbar,
+  html:has(#landing-box-root),
+  body:has(#landing-box-root),
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  html.no-scrollbar::-webkit-scrollbar,
+  body.no-scrollbar::-webkit-scrollbar,
+  html:has(#landing-box-root)::-webkit-scrollbar,
+  body:has(#landing-box-root)::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* WebKit, Blink, Chromium */
+  }
+
+  .progressive-blur-top {
+    background: linear-gradient(
+      to bottom,
+      var(--background) 0%,
+      var(--background) 20%,
+      color-mix(in oklch, var(--background) 70%, transparent) 60%,
+      transparent 100%
+    );
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+  }
+
+  .progressive-blur-bottom {
+    background: linear-gradient(
+      to top,
+      var(--background) 0%,
+      var(--background) 25%,
+      color-mix(in oklch, var(--background) 80%, transparent) 55%,
+      color-mix(in oklch, var(--background) 35%, transparent) 80%,
+      transparent 100%
+    );
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    mask-image: linear-gradient(to top, black 40%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to top, black 40%, transparent 100%);
+  }
+
+  .progressive-blur-top-muted {
+    background: linear-gradient(
+      to bottom,
+      var(--muted) 0%,
+      var(--muted) 20%,
+      color-mix(in oklch, var(--muted) 70%, transparent) 60%,
+      transparent 100%
+    );
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+  }
+
+  .progressive-blur-bottom-muted {
+    background: linear-gradient(
+      to top,
+      var(--muted) 0%,
+      var(--muted) 25%,
+      color-mix(in oklch, var(--muted) 80%, transparent) 55%,
+      color-mix(in oklch, var(--muted) 35%, transparent) 80%,
+      transparent 100%
+    );
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    mask-image: linear-gradient(to top, black 40%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to top, black 40%, transparent 100%);
+  }
+}
+
+@layer base {
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /* Chrome, Edge, and Safari */
+  *::-webkit-scrollbar {
+    width: 6px; /* Width of the vertical scrollbar */
+    height: 6px; /* Height of the horizontal scrollbar */
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent; /* Makes the track invisible */
+    border-radius: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border); /* Uses your theme's border color */
+    border-radius: 10px; /* Makes it pill-shaped */
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground); /* Darkens slightly on hover */
+  }
+}
+
+/* =======================================================
+   REDUCED MOTION
+   Covers everything not driven by Motion/GSAP: CSS
+   keyframes, smooth scroll and view transitions.
+   ======================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
+/* =======================================================
+   WORDMARK OPTICAL DEFOCUS (Smooth Backdrop-Filter Transition)
+   Uses CSS @property to animate blur radius directly on the GPU,
+   avoiding Chromium opacity backdrop-root isolation bugs.
+   ======================================================= */
+@property --wordmark-blur-1 {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --wordmark-blur-2 {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --wordmark-blur-3 {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+.wordmark-bloom {
+  --wordmark-blur-1: 0px;
+  --wordmark-blur-2: 0px;
+  --wordmark-blur-3: 0px;
+  transition:
+    --wordmark-blur-1 0.3s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    --wordmark-blur-2 0.3s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    --wordmark-blur-3 0.3s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.wordmark-bloom[data-bloomed="true"] {
+  --wordmark-blur-1: 4px;
+  --wordmark-blur-2: 12px;
+  --wordmark-blur-3: 20px;
+  transition:
+    --wordmark-blur-1 1.4s
+      var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)),
+    --wordmark-blur-2 1.55s
+      var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)) 0.07s,
+    --wordmark-blur-3 1.7s
+      var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)) 0.14s;
+}
+
+:is(.dark *) .wordmark-bloom[data-bloomed="true"] {
+  --wordmark-blur-1: 5px;
+  --wordmark-blur-2: 14px;
+  --wordmark-blur-3: 0px;
+  transition:
+    --wordmark-blur-1 1.4s
+      var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)),
+    --wordmark-blur-2 1.6s
+      var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)) 0.09s;
+}
+
+@media (max-width: 640px) {
+  .wordmark-bloom[data-bloomed="true"] {
+    transition:
+      --wordmark-blur-1 1.1s
+        var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)),
+      --wordmark-blur-2 1.25s
+        var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)) 0.05s,
+      --wordmark-blur-3 1.35s
+        var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)) 0.1s;
+  }
+
+  :is(.dark *) .wordmark-bloom[data-bloomed="true"] {
+    transition:
+      --wordmark-blur-1 1.1s
+        var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)),
+      --wordmark-blur-2 1.25s
+        var(--ease-cinematic, cubic-bezier(0.65, 0, 0.076, 1)) 0.06s;
+  }
+}
+
+/* =======================================================
+   PROGRESSIVE ENHANCEMENT & BROWSER COMPATIBILITY
+   Gracefully disables the bloom layer in Firefox (Gecko) due to
+   WebRender Bug 1749625 (mask-image on backdrop-filter fails to blur
+   transparent elements) and in any browser lacking backdrop-filter/mask support.
+   Firefox and unsupported browsers render pristine, sharp vector typography.
+   ======================================================= */
+@supports (-moz-appearance: none) {
+  .wordmark-bloom {
+    display: none !important;
+  }
+}
+
+@supports not (
+  (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))
+) {
+  .wordmark-bloom {
+    display: none !important;
+  }
+}
+
+@supports not (
+  (mask-image: linear-gradient(black, transparent)) or
+    (-webkit-mask-image: linear-gradient(black, transparent))
+) {
+  .wordmark-bloom {
+    display: none !important;
   }
 }

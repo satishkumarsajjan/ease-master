@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "app/**/{page,layout,route,error,global-error,not-found,loading,manifest,robots,sitemap,icon,apple-icon}.{ts,tsx}",
+    "scripts/*.mjs",
+    "registry/index.ts",
+    "source.config.ts",
+    "next.config.mjs",
+    "eslint.config.mjs",
+    "postcss.config.mjs"
+  ],
+  "project": ["**/*.{ts,tsx,mjs}"],
+  "ignore": [".source/**", "public/**", "content/**", ".next/**"],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "@tailwindcss/postcss",
+    "@tailwindcss/typography",
+    "tw-animate-css",
+    "shadcn",
+    "eslint-config-next",
+    "prettier-plugin-tailwindcss"
+  ],
+  "ignoreExportsUsedInFile": true
+}

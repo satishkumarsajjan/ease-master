@@ -1,0 +1,53 @@
+# Project Configuration
+
+> Learn how brand tokens, site configs, assets, and environment variables are organized.
+
+Satisium Starter centralizes configuration so you never have to search across dozens of files to update branding.
+
+## 1. Single Source of Truth (`config/site.ts`)
+
+All product branding, author information, repository URLs, social handles, and legal notices live in `config/site.ts`:
+
+```ts
+export const PRODUCT = {
+  name: "My Tool",
+  shortName: "Tool",
+  titleTemplate: "%s | My Tool",
+  defaultTitle: "My Tool — High-Performance SVG Editor",
+  description: "An intuitive in-browser tool built on Satisium.",
+} as const
+```
+
+- **`PRODUCT`:** Controls default HTML title tags, meta descriptions, and OpenGraph labels.
+- **`PROJECT`:** Controls official project social links (X/Twitter, GitHub, Discord, Instagram).
+- **`AUTHOR`:** Controls the creator profile and attribution.
+- **`LEGAL`:** Controls the updated date and legal footer parameters.
+
+---
+
+## 2. Brand Tokens & Design System (`app/globals.css`)
+
+Depth in Satisium is established purely through **OKLCH luminance tokens**, avoiding artificial drop shadows:
+
+- `bg-background` — Base surface (lightest in light mode, darkest in dark mode).
+- `bg-card` — Primary container cards and structural panels.
+- `bg-muted` — Secondary recessed surfaces and controls.
+- `text-foreground` — High-contrast body typography.
+- `text-muted-foreground` — Low-contrast supporting metadata and captions.
+
+<Callout type="warning">
+  <strong>Zero Opacity Modifiers:</strong> Never write Tailwind opacity
+  modifiers like <code>bg-primary/20</code> or{" "}
+  <code>text-muted-foreground/80</code>. Use semantic surface tokens directly.
+</Callout>
+
+---
+
+## 3. Brand Assets Checklist
+
+After running `pnpm setup`, replace these four files to complete your visual identity:
+
+1. **Favicon & Mobile Bookmark:** Replace `app/icon.svg`, `app/apple-icon.png`, and `app/favicon.ico`.
+2. **Social Card Background:** Replace `public/og-bg-optimized.jpg` (1200×630px).
+3. **Logo Mark:** Replace `public/satisium.png` (512×512px).
+4. **Brand Font (Optional):** Replace `public/nulshock.bold.otf` if your product uses a distinct headline typeface.

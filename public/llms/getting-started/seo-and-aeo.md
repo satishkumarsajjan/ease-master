@@ -1,0 +1,53 @@
+# SEO, OpenGraph & AI Discovery (AEO)
+
+> Master dynamic social sharing cards, search crawler indexation, and LLM readiness.
+
+Satisium Starter ensures that every page is fully indexable by traditional search engines (Google, Bing) and discoverable by modern AI engines (ChatGPT, Claude, Perplexity).
+
+## 1. Dynamic Social Cards (`/api/og`)
+
+Every route automatically generates a 1200×630px social preview card for Twitter/X, Discord, and LinkedIn:
+
+- **Endpoint:** `/api/og?title=<Title>&label=<Category>`
+- Rendered on the Node.js runtime using `next/og` and `@vercel/og`.
+- Rendered using `PlusJakartaSans-Bold.ttf` over `public/og-bg-optimized.jpg`.
+- You can test your card in development:
+  ```text
+  http://localhost:3000/api/og?title=My+Tool&label=WORKSTATION
+  ```
+
+---
+
+## 2. Setting Page Metadata
+
+Use the typed `buildMetadata()` helper from `lib/metadata.ts` on any new route:
+
+```tsx
+export const metadata = buildMetadata({
+  title: "Tool Canvas",
+  description: "High-performance vector tool canvas.",
+  path: ROUTES.app,
+})
+```
+
+This automatically generates canonical links, OpenGraph image tags, Twitter Summary Large Image cards, and language alternates.
+
+---
+
+## 3. AEO (AI Engine Optimization & LLMs)
+
+Autonomous AI agents (Perplexity, ChatGPT, Claude, Cursor) explore web documentation differently than human visitors. Satisium generates a machine-readable knowledge base before every production build:
+
+- **`public/llms.txt`:** The structured index file AI agents look for first.
+- **`public/llms-full.txt`:** Concatenated raw markdown knowledge base for 1-shot context injection.
+- **`public/llms/*.md`:** Clean markdown files corresponding to each documentation route.
+
+### Testing the LLM Pipeline:
+
+```bash
+pnpm llm
+```
+
+### Search Crawlers & AI Robots (`app/robots.ts`):
+
+Satisium explicitly configures permissions for AI indexing bots (`GPTBot`, `ClaudeBot`, `PerplexityBot`, `Google-Extended`, `Applebot-Extended`), allowing them priority access to your `/llms.txt` knowledge base while protecting private embed routes.

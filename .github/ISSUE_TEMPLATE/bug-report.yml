@@ -1,0 +1,42 @@
+name: 🐛 Bug Report
+description: Report a bug or rendering issue in a Satisium UI component
+title: "fix([scope]): brief description"
+labels: ["bug"] # Uses GitHub's default red bug label
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Satisium UI! Please provide a reproduction link if possible.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What is the current behavior vs expected behavior?
+    validations:
+      required: true
+  - type: input
+    id: reproduction
+    attributes:
+      label: Reproduction Link (CodeSandbox, StackBlitz, or GitHub)
+      description: Bugs with repro links get fixed 10x faster.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "e.g., macOS, Chrome 114, Next.js 15"
+    validations:
+      required: true
+  - type: input
+    id: shadcn-version
+    attributes:
+      label: shadcn CLI Version
+      description: Run `npx shadcn@latest --version` to find this.
+    validations:
+      required: true
+  - type: input
+    id: nextjs-version
+    attributes:
+      label: Next.js Version
+      description: Found in your package.json.
+    validations:
+      required: true

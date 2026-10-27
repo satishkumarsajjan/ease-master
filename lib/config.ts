@@ -1,0 +1,17 @@
+export {
+  SITE_URL,
+  isDevelopment,
+  PRODUCT,
+  PROJECT,
+  AUTHOR,
+  REPO,
+  DOCS_LAYOUT_VARIANTS,
+  DOCS_LAYOUT,
+  type DocsLayoutVariant,
+  type ProductConfig,
+  type EcosystemPillar,
+  type ProductCluster,
+  type ProductType,
+  type SitelinkItem,
+  type FAQItem,
+} from "@/config/site"

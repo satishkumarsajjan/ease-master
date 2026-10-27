@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    name: Version & Changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Sync registry metadata
+        run: pnpm build:registry:meta
+      - name: Version packages with Changesets
+        run: pnpm changeset version
+      - name: Build (verify)
+        run: pnpm build
+      - name: Commit version bump
+        run: |
+          git config user.name "changeset-bot"
+          git config user.email "changeset@satisium.com"
+          git add .
+          git diff --cached --quiet || git commit -m "chore(release): version packages"
+          git push

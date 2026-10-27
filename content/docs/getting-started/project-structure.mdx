@@ -1,0 +1,41 @@
+---
+title: Project Structure
+description: An overview of the directories and files in this template.
+---
+
+The template is organized into clear architectural layers adhering to strict placement conventions:
+
+<FileTree
+  files={{
+    "app/layout.tsx": "Root shell, fonts, and metadata",
+    "app/page.tsx": "Landing page and marketing hero",
+    "app/docs/[[...slug]]/page.tsx": "Fumadocs documentation engine",
+    "app/docs/[[...slug]]/layout.tsx":
+      "Resolves the page, picks the docs shell",
+    "app/app/page.tsx": "Application workspace",
+    "components/docs/types.ts": "The docs layout contract",
+    "components/docs/dispatch.tsx":
+      "Chooses the docs shell from NEXT_PUBLIC_DOCS_LAYOUT",
+    "components/docs/shell.tsx": "DocsScreen + DocsPane (borderless shell)",
+    "components/docs/layouts/three-pane.tsx":
+      "Borderless three-pane docs layout",
+    "components/docs/layouts/spatial.tsx": "Signature card-shift docs layout",
+    "components/ui/button.tsx": "Button primitive",
+    "components/ui/empty-state.tsx": "Reusable empty state",
+    "components/ui/loading-state.tsx": "Skeleton & spinner",
+    "components/mdx/file-tree.tsx": "MDX file tree component",
+    "components/mdx/steps.tsx": "Numbered walkthrough steps",
+    "content/docs": "Markdown & MDX documentation",
+    "lib/routes.ts": "Typed route registry",
+    "lib/config.ts": "Brand and site configuration",
+    "lib/nav.ts": "Navigation architecture",
+  }}
+/>
+
+## Directory Overview
+
+- **`app/`**: Next.js App Router surfaces — landing, docs engine, app workspace, API routes.
+- **`components/ui/`**: Reusable atomic primitives adhering to Satisium tokens.
+- **`components/mdx/`**: MDX-exclusive documentation components (`Steps`, `PromptBlock`, `FileTree`).
+- **`content/docs/`**: Markdown source pages rendered by Fumadocs.
+- **`lib/`**: Framework-free utilities, route constants, typed navigation, and telemetry.

@@ -1,0 +1,41 @@
+name: 🔧 Task / Improvement
+description: Request changes, fixes, or improvements to an existing component or area (e.g., update this UI to that, tweak these things)
+title: "chore([scope]): brief description"
+labels: ["type: improvement", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Satisium UI! Use this for changes to existing components or docs — not new features, not bugs.
+  - type: input
+    id: scope
+    attributes:
+      label: Affected Component / Area
+      description: Which component, page, or file should change?
+      placeholder: "e.g., AscentCarousel, blur-reveal.mdx, command-block"
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current State
+      description: What does it look/behave like now?
+    validations:
+      required: true
+  - type: textarea
+    id: desired
+    attributes:
+      label: Desired State
+      description: What should it look/behave like after the change?
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References / Mockups
+      description: Drop links, screenshots, or any media showing the target.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Context
+      description: Anything else (constraints, related issues, etc.).

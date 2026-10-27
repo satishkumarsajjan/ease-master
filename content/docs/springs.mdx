@@ -1,0 +1,127 @@
+---
+title: Spring Physics
+description: Mathematical mechanics of mass, stiffness, damping, and linear() CSS approximations.
+---
+
+Unlike static duration-based cubic-beziers, springs simulate actual physical forces. A spring does not have an arbitrary duration; its motion duration is an emergent property derived from physical dynamics.
+
+## Physical Parameters
+
+| Parameter     | Symbol | Range       | Description                                                                                |
+| :------------ | :----- | :---------- | :----------------------------------------------------------------------------------------- |
+| **Mass**      | $m$    | `0.1 – 5.0` | The inertia of the moving object. Higher mass creates heavier, more sluggish motion.       |
+| **Stiffness** | $k$    | `1 – 500`   | The tension of the spring. Higher stiffness causes faster, snappier oscillations.          |
+| **Damping**   | $c$    | `1 – 100`   | The friction resisting the motion. High damping suppresses oscillation (critical damping). |
+
+## CSS `linear()` Approximations
+
+Traditional CSS transitions cannot compute spring physics natively. Ease bridges this gap by solving the harmonic differential equation and sampling the motion into a modern CSS `linear()` function:
+
+```css
+.ease-spring {
+  transition: transform 1.2s
+    linear(
+      0,
+      0.009,
+      0.035,
+      0.078,
+      0.136,
+      0.207,
+      0.289,
+      0.38,
+      0.477,
+      0.578,
+      0.679,
+      0.778,
+      0.871,
+      0.956,
+      1.03,
+      1.09,
+      1.135,
+      1.164,
+      1.176,
+      1.172,
+      1.153,
+      1.121,
+      1.079,
+      1.03,
+      0.978,
+      0.927,
+      0.88,
+      0.84,
+      0.81,
+      0.791,
+      0.783,
+      0.787,
+      0.801,
+      0.825,
+      0.856,
+      0.892,
+      0.931,
+      0.97,
+      1.006,
+      1.038,
+      1.063,
+      1.08,
+      1.088,
+      1.087,
+      1.078,
+      1.062,
+      1.042,
+      1.018,
+      0.993,
+      0.97,
+      0.95,
+      0.935,
+      0.926,
+      0.923,
+      0.926,
+      0.934,
+      0.947,
+      0.963,
+      0.98,
+      0.996,
+      1.01,
+      1.021,
+      1.027,
+      1.029,
+      1.027,
+      1.021,
+      1.013,
+      1.003,
+      0.994,
+      0.986,
+      0.98,
+      0.977,
+      0.976,
+      0.978,
+      0.983,
+      0.989,
+      0.995,
+      1.001,
+      1.006,
+      1.009,
+      1.011,
+      1.011,
+      1.009,
+      1.006,
+      1.003,
+      0.999,
+      0.996,
+      0.994,
+      0.993,
+      0.993,
+      0.994,
+      0.996,
+      0.998,
+      1,
+      1.002,
+      1.003,
+      1.003,
+      1.003,
+      1.002,
+      1.001,
+      1
+    );
+}
+```

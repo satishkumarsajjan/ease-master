@@ -1,0 +1,11 @@
+{
+  "title": "Getting Started",
+  "pages": [
+    "installation",
+    "presets",
+    "configuration",
+    "analytics",
+    "seo-and-aeo",
+    "project-structure"
+  ]
+}

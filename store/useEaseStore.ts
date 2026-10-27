@@ -1,54 +1,57 @@
 // src/store/useEaseStore.ts
-import { create } from 'zustand';
+import { create } from "zustand"
 import {
   EditorState,
   EaseMode,
   Point,
   BezierConfig,
   SpringConfig,
-} from '@/core/types';
-import { Preset, BEZIER_PRESETS } from '@/core/presets';
+} from "@/core/types"
+import { Preset, BEZIER_PRESETS } from "@/core/presets"
 
 // 1. Info Data Structure
 type PresetInfo = {
-  label: string;
-  description: string;
-  useCases: string[];
-};
+  label: string
+  description: string
+  useCases: string[]
+}
 
 // 2. Store Interface
 interface EaseStore extends EditorState {
-  presetInfo: PresetInfo;
+  presetInfo: PresetInfo
 
   // --- ACTIONS ---
-  setMode: (mode: EaseMode) => void;
-  setDuration: (sec: number) => void;
+  setMode: (mode: EaseMode) => void
+  setDuration: (sec: number) => void
 
   // Fine-grained updates (Drag/Sliders)
-  updateBezier: (handle: 'p1' | 'p2', value: Point) => void;
-  updateSpring: (key: keyof SpringConfig, value: number) => void;
+  updateBezier: (handle: "p1" | "p2", value: Point) => void
+  updateSpring: (key: keyof SpringConfig, value: number) => void
 
   // Bulk updates (The "Old" way - kept for compatibility)
-  setBezierConfig: (config: BezierConfig) => void;
-  setSpringConfig: (config: SpringConfig) => void;
+  setBezierConfig: (config: BezierConfig) => void
+  setSpringConfig: (config: SpringConfig) => void
 
   // The "New" way (Updates Info Panel too)
-  applyPreset: (mode: EaseMode, preset: Preset<any>) => void;
+  applyPreset: (
+    mode: EaseMode,
+    preset: Preset<BezierConfig> | Preset<SpringConfig>
+  ) => void
 }
 
 // 3. Defaults
-const DEFAULT_PRESET = BEZIER_PRESETS[0];
+const DEFAULT_PRESET = BEZIER_PRESETS[0]
 
 const DEFAULT_SPRING: SpringConfig = {
   mass: 1,
   stiffness: 100,
   damping: 10,
   velocity: 0,
-};
+}
 
 export const useEaseStore = create<EaseStore>((set) => ({
   // --- INITIAL STATE ---
-  mode: 'bezier',
+  mode: "bezier",
   bezier: DEFAULT_PRESET.value,
   spring: DEFAULT_SPRING,
   duration: 1.0,
@@ -69,9 +72,9 @@ export const useEaseStore = create<EaseStore>((set) => ({
       bezier: { ...state.bezier, [handle]: value },
       presetInfo: {
         ...state.presetInfo,
-        label: 'Custom Bezier',
-        description: 'Custom configuration.',
-        useCases: ['Custom requirements'],
+        label: "Custom Bezier",
+        description: "Custom configuration.",
+        useCases: ["Custom requirements"],
       },
     })),
 
@@ -80,9 +83,9 @@ export const useEaseStore = create<EaseStore>((set) => ({
       spring: { ...state.spring, [key]: value },
       presetInfo: {
         ...state.presetInfo,
-        label: 'Custom Spring',
-        description: 'Custom physics simulation.',
-        useCases: ['Specific physics needs'],
+        label: "Custom Spring",
+        description: "Custom physics simulation.",
+        useCases: ["Specific physics needs"],
       },
     })),
 
@@ -103,11 +106,11 @@ export const useEaseStore = create<EaseStore>((set) => ({
   setBezierConfig: (config) =>
     set((state) => ({
       bezier: config,
-      mode: 'bezier',
+      mode: "bezier",
       presetInfo: {
         ...state.presetInfo,
-        label: 'Custom Bezier',
-        description: 'Manual configuration loaded.',
+        label: "Custom Bezier",
+        description: "Manual configuration loaded.",
         useCases: [],
       },
     })),
@@ -115,12 +118,12 @@ export const useEaseStore = create<EaseStore>((set) => ({
   setSpringConfig: (config) =>
     set((state) => ({
       spring: config,
-      mode: 'spring',
+      mode: "spring",
       presetInfo: {
         ...state.presetInfo,
-        label: 'Custom Spring',
-        description: 'Manual configuration loaded.',
+        label: "Custom Spring",
+        description: "Manual configuration loaded.",
         useCases: [],
       },
     })),
-}));
+}))

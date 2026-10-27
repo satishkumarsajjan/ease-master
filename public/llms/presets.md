@@ -1,0 +1,17 @@
+# Curve Presets
+
+> Catalog of standardized cubic-bezier curves and spring dynamics.
+
+Ease provides curated animation curves calibrated for common user interface states.
+
+## Standard Beziers
+
+- **Swift In-Out:** `cubic-bezier(0.4, 0.0, 0.2, 1.0)` — Standard acceleration and deceleration for modals, drawers, and page transitions.
+- **Snappy Out:** `cubic-bezier(0.16, 1.0, 0.3, 1.0)` — Fast initial entry with gentle deceleration for dropdowns and tooltips.
+- **Emphasized:** `cubic-bezier(0.2, 0.0, 0.0, 1.0)` — Dramatic material curve for primary navigational elements.
+
+## Calibrated Springs
+
+- **Bouncy:** High stiffness with underdamped oscillation for playful interactions and celebration toasts.
+- **Gentle:** Moderately damped curve with minimal overshoot for fluid sheet reveals and subtle focus rings.
+- **Wobbly:** Multi-cycle oscillation ideal for attention-seeking indicators and micro-feedback badges.

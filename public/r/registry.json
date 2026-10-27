@@ -1,0 +1,17 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "starter-template",
+  "homepage": "https://your-domain.com",
+  "items": [
+    {
+      "name": "pulse-card",
+      "type": "registry:component",
+      "title": "Pulse Card",
+      "description": "A minimal animated card used to demonstrate the registry pipeline.",
+      "dependencies": ["motion"],
+      "files": [
+        { "path": "registry/ui/pulse-card.tsx", "type": "registry:component" }
+      ]
+    }
+  ]
+}

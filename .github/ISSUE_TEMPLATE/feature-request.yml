@@ -1,0 +1,19 @@
+name: ✨ Component / Feature Request
+description: Propose a new component, animation, or library feature
+title: "feat([scope]): component name"
+labels: ["type: feature", "enhancement"] # Combines our custom label with GitHub's default
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Component
+      description: What should it look like? What animations (GSAP/Framer) are involved?
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References / Inspiration
+      description: Drop links to Dribbble shots, Twitter videos, live websites or any media.
+    validations:
+      required: true

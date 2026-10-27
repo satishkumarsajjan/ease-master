@@ -1,0 +1,28 @@
+# Ease
+
+> https://ease.satisium.com
+> Interactive cubic-bezier editor and spring physics studio for design engineers. Export production-ready curves to CSS, Tailwind, GSAP, and Motion.
+
+## Docs
+
+- [Changelog](https://ease.satisium.com/docs/changelog) — Release notes for this project.
+- [Overview](https://ease.satisium.com/docs) — Interactive motion curve and spring physics studio for design engineers.
+- [Curve Presets](https://ease.satisium.com/docs/presets) — Catalog of standardized cubic-bezier curves and spring dynamics.
+- [Spring Physics](https://ease.satisium.com/docs/springs) — Mathematical mechanics of mass, stiffness, damping, and linear() CSS approximations.
+
+## components
+
+- [Pulse Card](https://ease.satisium.com/docs/components/pulse-card) — A minimal registry component rendered by the previewer.
+
+## getting-started
+
+- [Analytics & Telemetry](https://ease.satisium.com/docs/getting-started/analytics) — How to track custom product events, enforce cookie consent, and configure analytics providers.
+- [Project Configuration](https://ease.satisium.com/docs/getting-started/configuration) — Learn how brand tokens, site configs, assets, and environment variables are organized.
+- [Installation & Quickstart](https://ease.satisium.com/docs/getting-started/installation) — Clone the template, choose your product preset, and boot the development server.
+- [Product Presets (UI vs Tool)](https://ease.satisium.com/docs/getting-started/presets) — Understand the two architectural presets and how to build in each.
+- [Project Structure](https://ease.satisium.com/docs/getting-started/project-structure) — An overview of the directories and files in this template.
+- [SEO, OpenGraph & AI Discovery (AEO)](https://ease.satisium.com/docs/getting-started/seo-and-aeo) — Master dynamic social sharing cards, search crawler indexation, and LLM readiness.
+
+## Optional
+
+- [Complete knowledge base](https://ease.satisium.com/llms-full.txt)
