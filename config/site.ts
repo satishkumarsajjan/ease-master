@@ -128,7 +128,7 @@ export type DocsLayoutVariant = (typeof DOCS_LAYOUT_VARIANTS)[number]
 export const DOCS_LAYOUT: DocsLayoutVariant =
   DOCS_LAYOUT_VARIANTS.find(
     (variant) => variant === process.env.NEXT_PUBLIC_DOCS_LAYOUT
-  ) ?? "spatial"
+  ) ?? "three-pane"
 
 export type SocialPlatform =
   "x" | "github" | "discord" | "instagram" | "youtube" | "linkedin" | "website"
