@@ -190,63 +190,236 @@ export interface KineticAnatomy {
   feel: string
   choreographyLaw: string
   timingSweetSpot: string
+  optimalDuration: number
 }
 
-export const ARCHETYPE_KINETICS: Record<string, KineticAnatomy> = {
-  entrance: {
-    role: "Entrance Decel",
-    launchVelocity: "Peak impulse at t=0",
-    settleCharacter: "Asymptotic friction cushion (0% overshoot)",
-    feel: "Fluid liquid glide mimicking physical friction",
+function computeKineticIntel(params: {
+  id: string
+  name: string
+  engine: "bezier" | "spring"
+  description?: string
+  bezier?: BezierConfig
+  spring?: SpringConfig
+  custom?: CustomEase
+}): KineticAnatomy {
+  const { id, engine, description, bezier, spring, custom } = params
+  const lowerId = id.toLowerCase()
+
+  // 1. BEZIER ENGINE KINETICS
+  if (engine === "bezier" && bezier) {
+    const { p1, p2 } = bezier
+    const dx1 = Math.max(0.01, p1.x)
+    const dy1 = p1.y
+    const initialSlope = dy1 / dx1
+
+    // Role classification
+    let role = "Transit S-Curve"
+    if (p1.y < 0 || p2.y > 1.0 || p1.y > 1.0) {
+      role = "Expressive Rebound"
+    } else if (
+      lowerId.includes("exit") ||
+      lowerId.includes("accelerate") ||
+      lowerId === "ease-in" ||
+      (lowerId.includes("-in") && !lowerId.includes("-in-out"))
+    ) {
+      role = "Exit Dismissal"
+    } else if (
+      lowerId.includes("decel") ||
+      lowerId.includes("modal") ||
+      lowerId.includes("sheet") ||
+      lowerId === "ease-out" ||
+      (lowerId.includes("-out") && !lowerId.includes("-in-out")) ||
+      lowerId.includes("fluid")
+    ) {
+      role = "Entrance Decel"
+    } else if (lowerId.includes("fast") || lowerId.includes("snap")) {
+      role = "Tactile Micro-Snap"
+    } else if (
+      lowerId.includes("cinematic") ||
+      lowerId.includes("emphasized")
+    ) {
+      role = "Dramatic Hero Arc"
+    } else if (lowerId.includes("linear") || lowerId.includes("step")) {
+      role = "Mechanical Step"
+    }
+
+    // Launch impulse analysis
+    let launchVelocity = "Smooth progressive ramp-up"
+    if (p1.y < 0) {
+      launchVelocity = `Anticipatory back-pull (${Math.round(p1.y * 100)}% counter-impulse)`
+    } else if (p1.x <= 0.1 && p1.y >= 0.7) {
+      launchVelocity = "Instant peak impulse at t=0"
+    } else if (initialSlope >= 2.2) {
+      launchVelocity = "Swift acceleration from rest"
+    } else if (p1.y <= 0.05 && p1.x >= 0.35) {
+      launchVelocity = "Suppressed launch delay (Heavy inertia)"
+    } else if (initialSlope <= 0.45) {
+      launchVelocity = "Gentle progressive inertia build-up"
+    }
+
+    // Settle & Deceleration analysis
+    let settleCharacter = "Symmetric deceleration into destination"
+    if (p2.y > 1.0) {
+      const overshoot = Math.round((p2.y - 1) * 100)
+      settleCharacter = `Controlled +${overshoot}% overshoot rebound`
+    } else if (p1.y > 1.0) {
+      const crest = Math.round((p1.y - 1) * 100)
+      settleCharacter = `Controlled +${crest}% launch crest deceleration`
+    } else if (
+      p2.y <= 0.55 &&
+      (lowerId.includes("-in") || lowerId.includes("accelerate"))
+    ) {
+      settleCharacter = "Maintains terminal exit velocity off-screen"
+    } else if (p2.x <= 0.25 && p2.y >= 0.95) {
+      settleCharacter = "Near-instantaneous magnetic latch"
+    } else if (p2.x >= 0.35 && p2.y >= 0.95) {
+      settleCharacter = "Asymptotic friction cushion (0% overshoot)"
+    }
+
+    // Optimal duration & sweet spot calibration
+    let optimalDuration = 320
+    let timingSweetSpot = "240ms – 360ms"
+    if (lowerId === "ultra-fast") {
+      optimalDuration = 180
+      timingSweetSpot = "140ms – 220ms"
+    } else if (lowerId.includes("power1")) {
+      optimalDuration = 240
+      timingSweetSpot = "180ms – 280ms"
+    } else if (lowerId.includes("power2") || lowerId.includes("decel")) {
+      optimalDuration = 300
+      timingSweetSpot = "240ms – 350ms"
+    } else if (
+      lowerId.includes("power3") ||
+      lowerId === "material-emphasized"
+    ) {
+      optimalDuration = 380
+      timingSweetSpot = "300ms – 440ms"
+    } else if (lowerId.includes("power4") || lowerId.includes("expo")) {
+      optimalDuration = 480
+      timingSweetSpot = "400ms – 560ms"
+    } else if (
+      lowerId.includes("cinematic") ||
+      lowerId.includes("circ-in-out")
+    ) {
+      optimalDuration = 650
+      timingSweetSpot = "500ms – 800ms"
+    } else if (role === "Exit Dismissal") {
+      optimalDuration = 200
+      timingSweetSpot = "160ms – 240ms"
+    } else if (role === "Expressive Rebound") {
+      optimalDuration = 400
+      timingSweetSpot = "340ms – 460ms"
+    }
+
+    if (custom?.duration) optimalDuration = custom.duration
+    if (custom?.targetSettle) timingSweetSpot = custom.targetSettle
+
+    return {
+      role,
+      launchVelocity,
+      settleCharacter,
+      feel: description || "Calibrated cubic bezier transition",
+      choreographyLaw:
+        custom?.guidance ||
+        description ||
+        "Standard interface kinetic transition",
+      timingSweetSpot,
+      optimalDuration,
+    }
+  }
+
+  // 2. SPRING ENGINE KINETICS
+  if (engine === "spring" && spring) {
+    const mass = Math.max(0.1, spring.mass || 1)
+    const stiffness = Math.max(1, spring.stiffness)
+    const damping = Math.max(0.1, spring.damping)
+
+    // Damping Ratio: ζ = damping / (2 * sqrt(mass * stiffness))
+    const zeta = damping / (2 * Math.sqrt(mass * stiffness))
+    const omegaN = Math.sqrt(stiffness / mass)
+
+    // Settle time approximation (to ~2% threshold)
+    const rawSettleSec =
+      (zeta < 0.35 ? 4.8 : 4.0) / Math.max(0.1, zeta * omegaN)
+    const computedDuration = Math.round(
+      Math.min(950, Math.max(140, rawSettleSec * 1000))
+    )
+
+    // Role classification
+    let role = "Critically Damped Snap"
+    if (zeta < 0.25) {
+      role = "High-Resonance Spring"
+    } else if (zeta < 0.7) {
+      role = "Expressive Pop"
+    } else if (zeta < 0.95) {
+      role = "Tactile Micro-Snap"
+    } else if (zeta <= 1.15) {
+      role = "Critically Damped Glide"
+    } else {
+      role = "Overdamped Viscous Drag"
+    }
+
+    // Launch impulse analysis
+    let launchVelocity = `Standard mechanical impulse (${stiffness} N/m)`
+    if (stiffness >= 600) {
+      launchVelocity = `High-tension instant trigger (${stiffness} N/m)`
+    } else if (mass >= 2) {
+      launchVelocity = `Heavy inertial mass response (${mass}kg)`
+    } else if (mass <= 0.5) {
+      launchVelocity = `Near-zero mass hair-trigger (${mass}kg)`
+    } else if (stiffness <= 100) {
+      launchVelocity = `Soft low-tension deflection (${stiffness} N/m)`
+    }
+
+    // Settle & Deceleration analysis
+    let settleCharacter = "Critically damped (Zero bounce, optimal settling)"
+    if (zeta < 0.25) {
+      const reboundPct = Math.round((1 - zeta) * 90)
+      settleCharacter = `Resonant underdamped oscillation (~${reboundPct}% rebound)`
+    } else if (zeta < 0.7) {
+      const bouncePct = Math.round((0.75 - zeta) * 60)
+      settleCharacter = `Tactile overshoot with cushion (~${bouncePct}% bounce)`
+    } else if (zeta < 0.95) {
+      settleCharacter = "Sub-critically damped snap (Minimal ringing)"
+    } else if (zeta <= 1.15) {
+      settleCharacter = "Critically damped (Zero bounce, optimal settling)"
+    } else {
+      settleCharacter = `Overdamped viscous friction (Damping ratio ζ = ${zeta.toFixed(2)})`
+    }
+
+    const optimalDuration = custom?.duration || computedDuration
+    const minRange = Math.max(120, Math.round(optimalDuration * 0.8))
+    const maxRange = Math.round(optimalDuration * 1.25)
+    const timingSweetSpot =
+      custom?.targetSettle || `${minRange}ms – ${maxRange}ms`
+
+    return {
+      role,
+      launchVelocity,
+      settleCharacter,
+      feel: description || "Physical mass-spring-damper kinetics",
+      choreographyLaw:
+        custom?.guidance ||
+        description ||
+        "Direct tactile manipulation spring response",
+      timingSweetSpot,
+      optimalDuration,
+    }
+  }
+
+  // Fallback
+  return {
+    role: "Standard Kinetic",
+    launchVelocity: "Instant acceleration",
+    settleCharacter: "Asymptotic cushion",
+    feel: description || "Interface transition",
     choreographyLaw:
-      "Primary Arrival Curve. Peak launch velocity absorbs user intent instantly, then cushions asymptotically into rest so the eye locks onto arriving content.",
-    timingSweetSpot: "250ms – 350ms",
-  },
-  exit: {
-    role: "Exit Dismissal",
-    launchVelocity: "Low-velocity departure building momentum",
-    settleCharacter: "Exits screen bounds before deceleration begins",
-    feel: "Accelerating departure off-screen",
-    choreographyLaw:
-      "Dismissal & Exit Curve. Accelerates departing elements off-screen into invisibility. Never decelerate on exit—lingering dismissals make UI feel sluggish.",
-    timingSweetSpot: "160ms – 240ms",
-  },
-  transit: {
-    role: "Transit S-Curve",
-    launchVelocity: "Gentle progressive ramp-up",
-    settleCharacter: "Symmetric deceleration into destination",
-    feel: "Calm, unobtrusive point-to-point transition",
-    choreographyLaw:
-      "Point-to-Point Transit. Moves elements comfortably across screen coordinates without drawing undue attention to the motion itself.",
+      custom?.guidance ||
+      description ||
+      "Standard interface kinetic transition",
     timingSweetSpot: "200ms – 320ms",
-  },
-  expressive: {
-    role: "Expressive Pop",
-    launchVelocity: "High-momentum spring impulse",
-    settleCharacter: "Controlled +4% to +8% rebound",
-    feel: "Playful kinetic character with tactile pop",
-    choreographyLaw:
-      "Celebratory & Hero Motion. Controlled overshoot adds energy to notifications and badges. Strictly avoid on high-frequency transactional dialogs.",
-    timingSweetSpot: "350ms – 460ms",
-  },
-  snappy: {
-    role: "Tactile Micro-Snap",
-    launchVelocity: "Zero-delay pointer impulse",
-    settleCharacter: "Critically damped stop (zero ringing)",
-    feel: "Crisp physical response for direct manipulation",
-    choreographyLaw:
-      "Direct Manipulation Response. Responds instantaneously to touch and gesture releases. Damping ratio must remain high to avoid visual jitter.",
-    timingSweetSpot: "140ms – 220ms",
-  },
-  mechanical: {
-    role: "Mechanical Step",
-    launchVelocity: "Constant velocity with zero acceleration",
-    settleCharacter: "Immediate quantized stop",
-    feel: "Quantized, industrial, robotic precision",
-    choreographyLaw:
-      "Functional UI States. Best for continuous loaders, progress bars, and clock hands where natural physical friction feels inappropriate.",
-    timingSweetSpot: "150ms – 300ms",
-  },
+    optimalDuration: 300,
+  }
 }
 
 export interface EaseDossier {
@@ -266,86 +439,137 @@ export interface EaseDossier {
   parentPreset?: string
 }
 
-function getPresetKineticIntel(
-  id: string,
-  name: string,
-  engine: "bezier" | "spring",
-  custom?: CustomEase
-): KineticAnatomy {
-  const lowerId = id.toLowerCase()
-  const lowerName = name.toLowerCase()
-  const parent = (custom?.parentPreset ?? "").toLowerCase()
-  const combined = `${lowerId} ${lowerName} ${parent}`
-
-  let base: KineticAnatomy
-
-  // 1. Exit / Acceleration
-  if (
-    combined.includes("exit") ||
-    combined.includes("accelerate") ||
-    lowerId === "ease-in" ||
-    (lowerId.includes("-in") && !lowerId.includes("-in-out"))
-  ) {
-    base = { ...ARCHETYPE_KINETICS.exit }
-  }
-  // 2. Entrance / Deceleration
-  else if (
-    combined.includes("decel") ||
-    combined.includes("modal") ||
-    combined.includes("sheet") ||
-    combined.includes("drawer") ||
-    lowerId === "ease-out" ||
-    (lowerId.includes("-out") && !lowerId.includes("-in-out")) ||
-    combined.includes("fluid")
-  ) {
-    base = { ...ARCHETYPE_KINETICS.entrance }
-  }
-  // 3. Expressive / Bouncy / Overshoot
-  else if (
-    combined.includes("bounce") ||
-    combined.includes("expressive") ||
-    combined.includes("pop") ||
-    combined.includes("back") ||
-    combined.includes("wobble") ||
-    combined.includes("toast")
-  ) {
-    base = { ...ARCHETYPE_KINETICS.expressive }
-  }
-  // 4. Snappy / Tactile / Fast
-  else if (
-    combined.includes("button") ||
-    combined.includes("snap") ||
-    combined.includes("fast") ||
-    combined.includes("subdued")
-  ) {
-    base = { ...ARCHETYPE_KINETICS.snappy }
-  }
-  // 5. Mechanical / Linear
-  else if (combined.includes("linear") || combined.includes("step")) {
-    base = { ...ARCHETYPE_KINETICS.mechanical }
-  }
-  // 6. Default to Transit S-Curve for Bezier, or Snappy for Springs
-  else {
-    base =
-      engine === "spring"
-        ? { ...ARCHETYPE_KINETICS.snappy }
-        : { ...ARCHETYPE_KINETICS.transit }
-  }
-
-  // Override with custom-calibrated values if present on CustomEase
-  if (custom?.guidance) {
-    base.choreographyLaw = custom.guidance
-  }
-  if (custom?.targetSettle) {
-    base.timingSweetSpot = custom.targetSettle
-  }
-
-  return base
+interface PresetFamily {
+  id: string
+  label: string
+  presetIds: string[]
 }
 
-function getPresetCategory(id: string, mode: "bezier" | "spring"): string {
-  return getPresetKineticIntel(id, id, mode).role
-}
+const BEZIER_FAMILIES: PresetFamily[] = [
+  {
+    id: "entrances-decel",
+    label: "Entrances & Decel",
+    presetIds: [
+      "ease-out",
+      "material-decelerate",
+      "power1-out",
+      "power2-out",
+      "power3-out",
+      "power4-out",
+      "expo-out",
+      "circ-out",
+    ],
+  },
+  {
+    id: "travel-s-curves",
+    label: "Travel & S-Curves",
+    presetIds: [
+      "ease",
+      "ease-in-out",
+      "material-standard",
+      "cinematic-slow",
+      "power1-in-out",
+      "power2-in-out",
+      "power3-in-out",
+      "power4-in-out",
+      "expo-in-out",
+      "circ-in-out",
+    ],
+  },
+  {
+    id: "exits-accel",
+    label: "Exits & Accel",
+    presetIds: [
+      "ease-in",
+      "material-accelerate",
+      "power1-in",
+      "power2-in",
+      "power3-in",
+      "power4-in",
+      "expo-in",
+      "circ-in",
+    ],
+  },
+  {
+    id: "expressive-overshoot",
+    label: "Expressive & Overshoot",
+    presetIds: [
+      "material-emphasized",
+      "ultra-fast",
+      "back-out",
+      "back-in",
+      "back-in-out",
+    ],
+  },
+]
+
+const SPRING_FAMILIES: PresetFamily[] = [
+  {
+    id: "critically-damped",
+    label: "Critically Damped",
+    presetIds: [
+      "drawer",
+      "ios-fluid",
+      "react-default",
+      "gentle",
+      "stiff",
+      "heavy",
+    ],
+  },
+  {
+    id: "tactile-snap",
+    label: "Tactile Micro-Snap",
+    presetIds: [
+      "button",
+      "toast",
+      "material-pop",
+      "hard-snap",
+      "rapid",
+      "mechanical-arm",
+    ],
+  },
+  {
+    id: "expressive-bouncy",
+    label: "Expressive & Bouncy",
+    presetIds: [
+      "soap-bubble",
+      "rubber-band",
+      "super-bouncy",
+      "trampoline",
+      "wobbly",
+      "elastic-out",
+      "elastic-soft",
+      "elastic-hard",
+      "glitch",
+    ],
+  },
+  {
+    id: "viscous-inertial",
+    label: "Viscous & Inertial",
+    presetIds: ["underwater", "helium", "slow", "molasses"],
+  },
+]
+
+const POPULAR_PRESET_IDS = new Set<string>([
+  // Bezier popular
+  "ease-out",
+  "material-emphasized",
+  "ease-in-out",
+  "power2-out",
+  "back-out",
+  "ultra-fast",
+  "ease",
+  "material-standard",
+  // Spring popular
+  "button",
+  "ios-fluid",
+  "material-pop",
+  "drawer",
+  "toast",
+  "soap-bubble",
+  "trampoline",
+  "stiff",
+])
 
 /**
  * ============================================================================
@@ -369,11 +593,9 @@ export function Stage1Audition() {
   const [customCurves, setCustomCurves] = React.useState<CustomEase[]>(
     INITIAL_CUSTOM_CURVES
   )
-  const [hoveredCurveMeta, setHoveredCurveMeta] = React.useState<{
-    name: string
-    duration?: number
-    archetype?: string
-  } | null>(null)
+  const [catalogFilter, setCatalogFilter] = React.useState<"all" | "popular">(
+    "all"
+  )
   type StackLevel =
     | { level: 0 }
     | { level: 1; curveId: string }
@@ -385,24 +607,6 @@ export function Stage1Audition() {
     "CSS" | "Tailwind" | "Motion" | "SwiftUI"
   >("CSS")
   const [hasCopiedToken, setHasCopiedToken] = React.useState(false)
-  const [hasCopiedFormula, setHasCopiedFormula] = React.useState(false)
-  const [hasCopiedSnippet, setHasCopiedSnippet] = React.useState(false)
-
-  const handleCopyFormula = (val: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(val)
-      setHasCopiedFormula(true)
-      setTimeout(() => setHasCopiedFormula(false), 1500)
-    }
-  }
-
-  const handleCopySnippet = (snippet: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(snippet)
-      setHasCopiedSnippet(true)
-      setTimeout(() => setHasCopiedSnippet(false), 1500)
-    }
-  }
 
   const [compareSlotB, setCompareSlotB] = React.useState<{
     id: string
@@ -426,12 +630,15 @@ export function Stage1Audition() {
       // 1. Check customCurves
       const custom = customCurves.find((c) => c.id === id)
       if (custom) {
-        const kinetics = getPresetKineticIntel(
-          custom.id,
-          custom.name,
-          custom.engine,
-          custom
-        )
+        const kinetics = computeKineticIntel({
+          id: custom.id,
+          name: custom.name,
+          engine: custom.engine,
+          description: custom.guidance ?? custom.desc,
+          bezier: custom.bezier,
+          spring: custom.spring,
+          custom,
+        })
         return {
           id: custom.id,
           name: custom.name,
@@ -441,11 +648,13 @@ export function Stage1Audition() {
           values: custom.values,
           bezier: custom.bezier,
           spring: custom.spring,
-          duration: custom.duration,
-          description: custom.desc ?? "Custom calibrated easing curve",
+          duration: kinetics.optimalDuration,
+          description:
+            custom.guidance ?? custom.desc ?? "Custom calibrated easing curve",
           useCases: custom.useCases ?? [
-            "Direct Manipulation",
-            "Interactive Views",
+            "Modal Dialogs",
+            "Custom Sheets",
+            "View Transitions",
           ],
           kinetics,
           variants: custom.variants,
@@ -457,7 +666,13 @@ export function Stage1Audition() {
       const bp = BEZIER_PRESETS.find((p) => p.id === id)
       if (bp) {
         const bConf = bp.value as BezierConfig
-        const kinetics = getPresetKineticIntel(bp.id, bp.label, "bezier")
+        const kinetics = computeKineticIntel({
+          id: bp.id,
+          name: bp.label,
+          engine: "bezier",
+          description: bp.description,
+          bezier: bConf,
+        })
         const valStr = `${bConf.p1.x.toFixed(2)}, ${bConf.p1.y.toFixed(2)}, ${bConf.p2.x.toFixed(2)}, ${bConf.p2.y.toFixed(2)}`
         let origin = "CSS Standard"
         if (bp.id.startsWith("material")) origin = "Material Design Standard"
@@ -470,9 +685,12 @@ export function Stage1Audition() {
           bp.id.startsWith("quart") ||
           bp.id.startsWith("quint") ||
           bp.id.startsWith("expo") ||
-          bp.id.startsWith("circ")
+          bp.id.startsWith("circ") ||
+          bp.id.startsWith("back")
         )
-          origin = "Penner Mathematical Curve"
+          origin = "GSAP / Penner Standard"
+        else if (bp.id === "ultra-fast" || bp.id === "cinematic-slow")
+          origin = "Cinematic Standard"
 
         return {
           id: bp.id,
@@ -482,7 +700,7 @@ export function Stage1Audition() {
           engine: "bezier",
           values: valStr,
           bezier: bConf,
-          duration: 350,
+          duration: kinetics.optimalDuration,
           description: bp.description,
           useCases: bp.useCases,
           kinetics,
@@ -493,11 +711,19 @@ export function Stage1Audition() {
       const sp = SPRING_PRESETS.find((p) => p.id === id)
       if (sp) {
         const sConf = sp.value as SpringConfig
-        const kinetics = getPresetKineticIntel(sp.id, sp.label, "spring")
+        const kinetics = computeKineticIntel({
+          id: sp.id,
+          name: sp.label,
+          engine: "spring",
+          description: sp.description,
+          spring: sConf,
+        })
         const valStr = `m:${sConf.mass} s:${sConf.stiffness} d:${sConf.damping}`
         let origin = "Satisium Physics Standard"
-        if (sp.id.includes("apple")) origin = "Apple HIG Fluid Spring"
+        if (sp.id.includes("apple") || sp.id === "ios-fluid")
+          origin = "Apple HIG Fluid Spring"
         else if (sp.id.includes("material")) origin = "Material Design Spring"
+        else if (sp.id.includes("react")) origin = "React Spring Standard"
 
         return {
           id: sp.id,
@@ -507,7 +733,7 @@ export function Stage1Audition() {
           engine: "spring",
           values: valStr,
           spring: sConf,
-          duration: 440,
+          duration: kinetics.optimalDuration,
           description: sp.description,
           useCases: sp.useCases,
           kinetics,
@@ -664,17 +890,49 @@ export function Stage1Audition() {
     setTheme(theme === "dark" ? "light" : "dark")
   }
 
-  const filteredSystemPresets = React.useMemo(() => {
+  const groupedSystemPresets = React.useMemo(() => {
     const list = activeEngine === "bezier" ? BEZIER_PRESETS : SPRING_PRESETS
-    if (!searchQuery) return list
-    const query = searchQuery.toLowerCase()
-    return list.filter((p) => {
+    const families =
+      activeEngine === "bezier" ? BEZIER_FAMILIES : SPRING_FAMILIES
+    const query = searchQuery.trim().toLowerCase()
+
+    const filtered = list.filter((p) => {
+      if (catalogFilter === "popular" && !POPULAR_PRESET_IDS.has(p.id)) {
+        return false
+      }
+      if (!query) return true
       const matchName = p.label.toLowerCase().includes(query)
       const matchDesc = p.description.toLowerCase().includes(query)
       const matchUse = p.useCases.some((u) => u.toLowerCase().includes(query))
       return matchName || matchDesc || matchUse
     })
-  }, [activeEngine, searchQuery])
+
+    const filteredMap = new Map(filtered.map((p) => [p.id, p]))
+
+    const groups = families
+      .map((f) => ({
+        id: f.id,
+        label: f.label,
+        presets: f.presetIds
+          .map((id) => filteredMap.get(id))
+          .filter((p): p is (typeof list)[number] => p !== undefined),
+      }))
+      .filter((g) => g.presets.length > 0)
+
+    const assignedIds = new Set(families.flatMap((f) => f.presetIds))
+    const unassigned = filtered.filter((p) => !assignedIds.has(p.id))
+    if (unassigned.length > 0) {
+      groups.push({
+        id: "other",
+        label: "Additional Curves",
+        presets: unassigned,
+      })
+    }
+
+    const totalCount = groups.reduce((acc, g) => acc + g.presets.length, 0)
+
+    return { groups, totalCount }
+  }, [activeEngine, searchQuery, catalogFilter])
 
   const getActivePresetMeta = () => {
     // Check if active curve is in customCurves hierarchy
@@ -927,14 +1185,6 @@ export function Stage1Audition() {
                           onDoubleClick={() =>
                             setNavStack({ level: 1, curveId: curve.id })
                           }
-                          onMouseEnter={() =>
-                            setHoveredCurveMeta({
-                              name: curve.name,
-                              duration: curve.duration,
-                              archetype: "Custom",
-                            })
-                          }
-                          onMouseLeave={() => setHoveredCurveMeta(null)}
                           title={
                             variantCount > 0
                               ? `${curve.name} · Click to audition · Double-click to expand variants`
@@ -1060,28 +1310,43 @@ export function Stage1Audition() {
               </div>
             </div>
 
-            {/* 3. LIBRARY HEADER + 1-LINE DYNAMIC READOUT DOCK */}
+            {/* 3. LIBRARY HEADER + FILTER DOCK */}
             <div className="mt-2.5 flex h-5 shrink-0 items-center justify-between px-0.5">
               <div className="flex items-center gap-1.5">
                 <span className="font-heading text-xs font-semibold text-foreground">
                   Library
                 </span>
                 <span className="font-sans text-[11px] font-normal text-muted-foreground">
-                  ({filteredSystemPresets.length})
+                  ({groupedSystemPresets.totalCount})
                 </span>
               </div>
 
-              {/* Fixed 1-Line Readout Dock */}
-              <div className="max-w-[155px] min-w-0 truncate text-right">
-                {hoveredCurveMeta ? (
-                  <span className="font-sans text-[11px] font-medium text-foreground transition-all">
-                    {hoveredCurveMeta.name}
-                  </span>
-                ) : (
-                  <span className="font-sans text-[11px] text-muted-foreground transition-all">
-                    {activePresetMeta.name}
-                  </span>
-                )}
+              {/* All vs Popular Filter Pill */}
+              <div className="flex h-5 items-center rounded-[6px] bg-muted p-0.5 font-sans text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setCatalogFilter("all")}
+                  className={cn(
+                    "cursor-pointer rounded-[4px] px-1.5 py-0.5 transition-colors",
+                    catalogFilter === "all"
+                      ? "bg-background font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogFilter("popular")}
+                  className={cn(
+                    "cursor-pointer rounded-[4px] px-1.5 py-0.5 transition-colors",
+                    catalogFilter === "popular"
+                      ? "bg-background font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  ★ Popular
+                </button>
               </div>
             </div>
 
@@ -1102,92 +1367,123 @@ export function Stage1Audition() {
                 onScroll={checkScroll}
                 className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-0.5 pb-2"
               >
-                <div className="grid grid-cols-3 gap-1.5">
-                  {filteredSystemPresets.map((item) => {
-                    const isActive = activePresetId === item.id
-                    return (
-                      <div
-                        key={item.id}
-                        className="group relative flex w-full flex-col"
+                {groupedSystemPresets.totalCount === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="mb-2 flex size-9 items-center justify-center rounded-[10px] bg-muted text-muted-foreground">
+                      <HugeiconsIcon icon={Search01Icon} className="size-4" />
+                    </div>
+                    <span className="font-heading text-xs font-semibold text-foreground">
+                      No curves found
+                    </span>
+                    <p className="mt-0.5 font-sans text-[11px] text-muted-foreground">
+                      {searchQuery
+                        ? `No matches for "${searchQuery}"`
+                        : "No curves in this view"}
+                    </p>
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="mt-2.5 cursor-pointer rounded-[6px] bg-secondary px-2.5 py-1 font-sans text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
                       >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActivePresetId(item.id)
-                            setActiveEngine(activeEngine)
-                          }}
-                          onDoubleClick={() =>
-                            setNavStack({ level: 1, curveId: item.id })
-                          }
-                          onMouseEnter={() =>
-                            setHoveredCurveMeta({
-                              name: item.label,
-                              duration: activeEngine === "bezier" ? 350 : 450,
-                              archetype: getPresetCategory(
-                                item.id,
-                                activeEngine
-                              ),
-                            })
-                          }
-                          onMouseLeave={() => setHoveredCurveMeta(null)}
-                          title={`${item.label} · Click to audition · Double-click to open slide`}
-                          className={cn(
-                            "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
-                            isActive
-                              ? "bg-foreground text-background"
-                              : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
-                          )}
-                        >
-                          {/* Inner Mini Graph Box (Screen) */}
-                          <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
-                            <MiniGraph
-                              mode={activeEngine}
-                              bezier={
-                                activeEngine === "bezier"
-                                  ? (item.value as BezierConfig)
-                                  : undefined
-                              }
-                              spring={
-                                activeEngine === "spring"
-                                  ? (item.value as SpringConfig)
-                                  : undefined
-                              }
-                              className={cn(
-                                "h-full w-full stroke-2 transition-colors",
-                                isActive
-                                  ? "stroke-foreground"
-                                  : "stroke-muted-foreground group-hover:stroke-foreground"
-                              )}
-                            />
-                          </div>
+                        Clear search
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {groupedSystemPresets.groups.map((group) => (
+                      <div key={group.id} className="flex flex-col gap-1.5">
+                        {/* Family Section Subhead */}
+                        <div className="flex items-center justify-between px-0.5 pt-0.5">
+                          <span className="font-heading text-[11px] font-semibold text-muted-foreground">
+                            {group.label}
+                          </span>
+                          <span className="font-sans text-[10px] text-muted-foreground">
+                            {group.presets.length}
+                          </span>
+                        </div>
 
-                          {/* Grounded Name Strip in Outer Box */}
-                          <div className="flex h-4.5 w-full items-center justify-center px-0.5">
-                            <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
-                              {item.label}
-                            </span>
-                          </div>
-                        </button>
+                        {/* 3-Column Squircle Grid */}
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {group.presets.map((item) => {
+                            const isActive = activePresetId === item.id
+                            return (
+                              <div
+                                key={item.id}
+                                className="group relative flex w-full flex-col"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActivePresetId(item.id)
+                                    setActiveEngine(activeEngine)
+                                  }}
+                                  onDoubleClick={() =>
+                                    setNavStack({ level: 1, curveId: item.id })
+                                  }
+                                  title={`${item.label} · Click to audition · Double-click to open slide`}
+                                  className={cn(
+                                    "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
+                                    isActive
+                                      ? "bg-foreground text-background"
+                                      : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                  )}
+                                >
+                                  {/* Inner Mini Graph Box (Screen) */}
+                                  <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
+                                    <MiniGraph
+                                      mode={activeEngine}
+                                      bezier={
+                                        activeEngine === "bezier"
+                                          ? (item.value as BezierConfig)
+                                          : undefined
+                                      }
+                                      spring={
+                                        activeEngine === "spring"
+                                          ? (item.value as SpringConfig)
+                                          : undefined
+                                      }
+                                      className={cn(
+                                        "h-full w-full stroke-2 transition-colors",
+                                        isActive
+                                          ? "stroke-foreground"
+                                          : "stroke-muted-foreground group-hover:stroke-foreground"
+                                      )}
+                                    />
+                                  </div>
 
-                        {/* Quick Inspect Button on Hover (Top-Right of Inner Box) */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setNavStack({ level: 1, curveId: item.id })
-                          }}
-                          title={`Open ${item.label} slide`}
-                          className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-                        >
-                          <HugeiconsIcon
-                            icon={ArrowUpRight01Icon}
-                            className="size-2.5"
-                          />
-                        </button>
+                                  {/* Grounded Name Strip in Outer Box */}
+                                  <div className="flex h-4.5 w-full items-center justify-center px-0.5">
+                                    <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                                      {item.label}
+                                    </span>
+                                  </div>
+                                </button>
+
+                                {/* Quick Inspect Button on Hover (Top-Right of Inner Box) */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setNavStack({ level: 1, curveId: item.id })
+                                  }}
+                                  title={`Open ${item.label} slide`}
+                                  className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                                >
+                                  <HugeiconsIcon
+                                    icon={ArrowUpRight01Icon}
+                                    className="size-2.5"
+                                  />
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
-                    )
-                  })}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Bottom Progressive Blur Vignette */}
@@ -1205,7 +1501,7 @@ export function Stage1Audition() {
           <section
             aria-label="Block 02: Ease Studio"
             className={cn(
-              "absolute inset-0 flex flex-col justify-between rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
+              "absolute inset-0 flex flex-col rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
               navStack.level === 1
                 ? "pointer-events-auto translate-x-0"
                 : navStack.level === 0
@@ -1214,9 +1510,9 @@ export function Stage1Audition() {
             )}
           >
             {activeDossier && (
-              <div className="flex h-full flex-col">
-                {/* TOP: COMPACT, ELEGANT KINETIC DOSSIER */}
-                <div className="flex shrink-0 flex-col gap-3 pb-1">
+              <div className="flex h-full flex-col gap-3">
+                {/* TOP: STREAMLINED ESSENTIAL KINETIC DOSSIER */}
+                <div className="flex shrink-0 flex-col gap-2.5">
                   {/* Top Navigation Bar */}
                   <div className="flex shrink-0 items-center justify-between">
                     <button
@@ -1235,79 +1531,56 @@ export function Stage1Audition() {
                     </span>
                   </div>
 
-                  {/* Title & Origin Pedigree */}
-                  <div className="flex shrink-0 flex-col gap-1">
+                  {/* Title & Origin Subtitle */}
+                  <div className="flex shrink-0 flex-col gap-0.5">
                     <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
                       {activeDossier.name}
                     </h3>
-                    <div className="flex items-center gap-1.5 font-sans text-[11px] text-muted-foreground">
-                      <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[9px] font-semibold tracking-tight text-foreground uppercase">
-                        {activeDossier.kinetics.role}
-                      </span>
-                      <span>·</span>
-                      <span className="truncate">{activeDossier.origin}</span>
-                    </div>
+                    <p className="truncate font-sans text-[11px] text-muted-foreground">
+                      {activeDossier.kinetics.role} · {activeDossier.origin}
+                    </p>
                   </div>
 
                   {/* The Single Definitive Kinetic Law (Hero Statement) */}
-                  <p className="font-sans text-xs leading-[1.5] text-foreground">
-                    &ldquo;{activeDossier.kinetics.choreographyLaw}&rdquo;
+                  <p className="font-sans text-xs leading-relaxed text-foreground">
+                    &ldquo;
+                    {activeDossier.description ||
+                      activeDossier.kinetics.choreographyLaw}
+                    &rdquo;
                   </p>
 
-                  {/* Best For (Habitats) */}
-                  {activeDossier.useCases &&
-                    activeDossier.useCases.length > 0 && (
-                      <div className="flex flex-col gap-1.5">
-                        <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                          Best For
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {activeDossier.useCases.map((uc) => (
-                            <span
-                              key={uc}
-                              className="rounded-[6px] bg-muted px-2 py-0.5 font-sans text-[10px] font-medium text-foreground"
-                            >
-                              {uc}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  {/* Telemetry Card */}
+                  <div className="flex flex-col gap-2 rounded-[12px] bg-muted p-3">
+                    {/* Row 1: Full-width Coordinates in Monospace */}
+                    <div className="font-mono text-xs font-semibold tracking-tight text-foreground">
+                      {activeDossier.values}
+                    </div>
 
-                  {/* Timing Sweet Spot */}
-                  <div className="flex items-center justify-between">
-                    <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                      Sweet Spot
-                    </span>
-                    <span className="font-sans text-[11px] font-medium text-foreground">
-                      {activeDossier.kinetics.timingSweetSpot}
-                    </span>
-                  </div>
-
-                  {/* Full-Width Formula Row with 1-Click Copy */}
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                        Formula Specification
+                    {/* Row 2: Timing Sweet Spot */}
+                    <div className="flex items-center justify-between font-sans text-xs">
+                      <span className="text-muted-foreground">Sweet spot</span>
+                      <span className="font-medium text-foreground">
+                        {activeDossier.kinetics.timingSweetSpot}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyFormula(activeDossier.values)}
-                        className="cursor-pointer font-sans text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {hasCopiedFormula ? "Copied ✓" : "Copy"}
-                      </button>
                     </div>
-                    <div className="flex h-7 w-full items-center justify-between rounded-[8px] bg-muted px-2.5 font-mono text-[11px] font-medium text-foreground">
-                      <span className="truncate">{activeDossier.values}</span>
-                    </div>
+
+                    {/* Row 3: Recommended UI Habitats (Clean Natural Wrap, No Truncation) */}
+                    {activeDossier.useCases &&
+                      activeDossier.useCases.length > 0 && (
+                        <div className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            Best for:
+                          </span>{" "}
+                          {activeDossier.useCases.join(", ")}
+                        </div>
+                      )}
                   </div>
                 </div>
 
-                {/* BOTTOM: OCCUPYING THE REMAINING SPACE NATURALLY */}
+                {/* BOTTOM: TACTILE SQUIRCLE VARIANTS OR KINETIC PROFILE (NO DUMB GAP) */}
                 {activeDossier.isCustom ? (
-                  <div className="flex min-h-0 flex-1 flex-col pt-3">
-                    <div className="flex shrink-0 items-center justify-between px-0.5 pb-2">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex shrink-0 items-center justify-between px-0.5">
                       <div className="flex items-center gap-1.5">
                         <span className="font-heading text-xs font-semibold text-foreground">
                           Variants
@@ -1321,8 +1594,8 @@ export function Stage1Audition() {
                       </span>
                     </div>
 
-                    {/* Responsive Grid Filling the Space Gracefully */}
-                    <div className="no-scrollbar grid flex-1 grid-cols-2 gap-2 overflow-y-auto pb-1">
+                    {/* Clean 1:1 Squircle 2-Column Grid */}
+                    <div className="grid grid-cols-2 gap-2">
                       {(activeDossier.variants ?? []).map((v) => {
                         const isSelected = activePresetId === v.id
                         const subVariantCount = v.variants?.length ?? 0
@@ -1347,16 +1620,16 @@ export function Stage1Audition() {
                               }}
                               title={`${v.name} · Click to audition · Double-click to open slide`}
                               className={cn(
-                                "relative flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] p-1 transition-all",
+                                "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
                                 isSelected
                                   ? "bg-foreground text-background"
                                   : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
                               )}
                             >
-                              {/* Inner Mini Graph Box with High Visual Balance */}
-                              <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-1.5">
+                              {/* Inner Mini Graph Box (Clean 1:1 Squircle Screen) */}
+                              <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-2">
                                 {subVariantCount > 0 && (
-                                  <span className="pointer-events-none absolute top-1 left-1.5 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
+                                  <span className="pointer-events-none absolute top-1.5 left-2 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
                                     +{subVariantCount}
                                   </span>
                                 )}
@@ -1374,7 +1647,7 @@ export function Stage1Audition() {
                                 />
                               </div>
 
-                              {/* Grounded Name Strip in Outer Box */}
+                              {/* Grounded Name Strip Snug Underneath */}
                               <div className="flex h-5 w-full items-center justify-center px-1">
                                 <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
                                   {v.name}
@@ -1405,17 +1678,17 @@ export function Stage1Audition() {
                         )
                       })}
 
-                      {/* Action Tile: + Add Variant */}
+                      {/* Action Tile: + Add Variant (Clean 1:1 Squircle) */}
                       <button
                         type="button"
                         onClick={handleAddVariant}
                         title="Add variant"
-                        className="group flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                        className="group flex w-full cursor-pointer flex-col items-center rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
                       >
-                        <div className="relative flex aspect-[16/10] w-full items-center justify-center rounded-[9px] bg-background p-1.5">
+                        <div className="relative flex aspect-square w-full items-center justify-center rounded-[9px] bg-background p-2">
                           <HugeiconsIcon
                             icon={PlusSignIcon}
-                            className="size-4 text-muted-foreground group-hover:text-foreground"
+                            className="size-5 text-muted-foreground group-hover:text-foreground"
                           />
                         </div>
                         <div className="flex h-5 w-full items-center justify-center px-1">
@@ -1427,73 +1700,36 @@ export function Stage1Audition() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex min-h-0 flex-1 flex-col justify-between pt-4">
-                    {/* Kinetic Physics Profile Cards */}
-                    <div className="flex flex-col gap-2.5">
-                      <div className="flex flex-col gap-1 rounded-[10px] bg-muted p-2.5">
-                        <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                          Launch Impulse
+                  <div className="flex flex-1 flex-col gap-2.5">
+                    {/* Unified Physics Profile Card */}
+                    <div className="flex flex-col gap-2.5 rounded-[12px] bg-muted p-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                          Launch impulse
                         </span>
                         <span className="font-sans text-xs text-foreground">
                           {activeDossier.kinetics.launchVelocity}
                         </span>
                       </div>
-
-                      <div className="flex flex-col gap-1 rounded-[10px] bg-muted p-2.5">
-                        <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                          Settle & Deceleration
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                          Settle deceleration
                         </span>
                         <span className="font-sans text-xs text-foreground">
                           {activeDossier.kinetics.settleCharacter}
                         </span>
                       </div>
-
-                      {/* Instant CSS snippet copy row */}
-                      <div className="flex flex-col gap-1 pt-0.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                            CSS Snippet
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleCopySnippet(
-                                `transition: all ${activeDossier.duration}ms ${
-                                  activeDossier.engine === "bezier"
-                                    ? `cubic-bezier(${activeDossier.values})`
-                                    : "ease"
-                                };`
-                              )
-                            }
-                            className="cursor-pointer font-sans text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-                          >
-                            {hasCopiedSnippet ? "Copied ✓" : "Copy"}
-                          </button>
-                        </div>
-                        <div className="flex h-7 w-full items-center justify-between rounded-[8px] bg-muted px-2.5 font-mono text-[10px] text-foreground">
-                          <span className="truncate">
-                            {activeDossier.engine === "bezier"
-                              ? `cubic-bezier(${activeDossier.values})`
-                              : `spring(${activeDossier.values})`}
-                          </span>
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Grounded Fork Button */}
-                    <div className="flex shrink-0 flex-col pt-3">
-                      <button
-                        type="button"
-                        onClick={() => handleForkPreset(activeDossier.id)}
-                        className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
-                      >
-                        <HugeiconsIcon
-                          icon={PlusSignIcon}
-                          className="size-3.5"
-                        />
-                        <span>Fork to Custom Preset</span>
-                      </button>
-                    </div>
+                    {/* Grounded Fork Button (Pinned to Bottom of Slide) */}
+                    <button
+                      type="button"
+                      onClick={() => handleForkPreset(activeDossier.id)}
+                      className="mt-auto flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
+                    >
+                      <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+                      <span>Fork to Custom Preset</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1504,16 +1740,16 @@ export function Stage1Audition() {
           <section
             aria-label="Block 02: Variant Tuning"
             className={cn(
-              "absolute inset-0 flex flex-col justify-between rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
+              "absolute inset-0 flex flex-col rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
               navStack.level === 2
                 ? "pointer-events-auto translate-x-0"
                 : "pointer-events-none translate-x-[calc(100%+8px)]"
             )}
           >
             {currentCurve && currentVariant && (
-              <div className="flex h-full flex-col">
+              <div className="flex h-full flex-col gap-3">
                 {/* TOP: MINIMALIST ESSENTIAL VARIANT DOSSIER */}
-                <div className="flex shrink-0 flex-col gap-3 pb-1">
+                <div className="flex shrink-0 flex-col gap-2.5">
                   {/* Top Navigation */}
                   <div className="flex shrink-0 items-center justify-between">
                     <button
@@ -1535,45 +1771,33 @@ export function Stage1Audition() {
                   </div>
 
                   {/* Title & Origin Pedigree */}
-                  <div className="flex shrink-0 flex-col gap-1">
+                  <div className="flex shrink-0 flex-col gap-0.5">
                     <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
                       {currentVariant.name}
                     </h3>
-                    <span className="font-sans text-[11px] text-muted-foreground">
+                    <p className="truncate font-sans text-[11px] text-muted-foreground">
                       Branch of {currentCurve.name} · Kinetic Variant
-                    </span>
+                    </p>
                   </div>
 
                   {/* Variant Description */}
                   {currentVariant.desc && (
-                    <p className="font-sans text-xs leading-[1.5] text-foreground">
-                      {currentVariant.desc}
+                    <p className="font-sans text-xs leading-relaxed text-foreground">
+                      &ldquo;{currentVariant.desc}&rdquo;
                     </p>
                   )}
 
-                  {/* Formula Specification (Full Width with 1-Click Copy) */}
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                        Formula Specification
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyFormula(currentVariant.values)}
-                        className="cursor-pointer font-sans text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {hasCopiedFormula ? "Copied ✓" : "Copy"}
-                      </button>
-                    </div>
-                    <div className="flex h-7 w-full items-center justify-between rounded-[8px] bg-muted px-2.5 font-mono text-[11px] font-medium text-foreground">
-                      <span className="truncate">{currentVariant.values}</span>
-                    </div>
+                  {/* Formula Specification */}
+                  <div className="flex h-7 w-full items-center rounded-[8px] bg-muted px-2.5">
+                    <span className="font-mono text-xs font-semibold tracking-tight text-foreground">
+                      {currentVariant.values}
+                    </span>
                   </div>
                 </div>
 
-                {/* BOTTOM: OCCUPYING THE REMAINING SPACE WITH FLAVORS GRID */}
-                <div className="flex min-h-0 flex-1 flex-col pt-3">
-                  <div className="flex shrink-0 items-center justify-between px-0.5 pb-2">
+                {/* BOTTOM: COMPACT, TACTILE FLAVORS SQUIRCLE GRID */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex shrink-0 items-center justify-between px-0.5">
                     <span className="font-heading text-xs font-semibold text-foreground">
                       Flavors
                     </span>
@@ -1582,7 +1806,7 @@ export function Stage1Audition() {
                     </span>
                   </div>
 
-                  <div className="no-scrollbar grid flex-1 grid-cols-2 gap-2 overflow-y-auto pb-1">
+                  <div className="grid grid-cols-2 gap-2">
                     {(currentVariant.variants ?? []).map((sv) => {
                       const isSelected = activePresetId === sv.id
                       return (
@@ -1599,13 +1823,13 @@ export function Stage1Audition() {
                             }}
                             title={`${sv.name} · Click to audition`}
                             className={cn(
-                              "relative flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] p-1 transition-all",
+                              "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
                               isSelected
                                 ? "bg-foreground text-background"
                                 : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
                             )}
                           >
-                            <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-1.5">
+                            <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-2">
                               <MiniGraph
                                 mode={sv.engine}
                                 bezier={sv.bezier}
@@ -1628,17 +1852,17 @@ export function Stage1Audition() {
                       )
                     })}
 
-                    {/* Action Tile: + Add Flavor */}
+                    {/* Action Tile: + Add Flavor (Clean 1:1 Squircle) */}
                     <button
                       type="button"
                       onClick={handleAddFlavor}
                       title="Add flavor"
-                      className="group flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                      className="group flex w-full cursor-pointer flex-col items-center rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
                     >
-                      <div className="relative flex aspect-[16/10] w-full items-center justify-center rounded-[9px] bg-background p-1.5">
+                      <div className="relative flex aspect-square w-full items-center justify-center rounded-[9px] bg-background p-2">
                         <HugeiconsIcon
                           icon={PlusSignIcon}
-                          className="size-4 text-muted-foreground group-hover:text-foreground"
+                          className="size-5 text-muted-foreground group-hover:text-foreground"
                         />
                       </div>
                       <div className="flex h-5 w-full items-center justify-center px-1">
