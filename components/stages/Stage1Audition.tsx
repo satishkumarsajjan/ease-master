@@ -39,6 +39,7 @@ export interface CustomEase {
   guidance?: string
   targetSettle?: string
   desc?: string
+  useCases?: string[]
   variants?: CustomEase[]
 }
 
@@ -56,6 +57,7 @@ const INITIAL_CUSTOM_CURVES: CustomEase[] = [
       "Centered modals demand swift acceleration with cushioned deceleration. Never bounce > 1 time in transactional UI.",
     targetSettle: "250ms – 350ms",
     desc: "Primary modal acceleration with balanced settle",
+    useCases: ["Modal Dialogs", "Custom Sheets", "View Transitions"],
     variants: [
       {
         id: "modal-sheet-exit",
@@ -153,6 +155,7 @@ const INITIAL_CUSTOM_CURVES: CustomEase[] = [
       "Side sheets and drawers follow finger release velocity. Maintain high damping ratio to prevent distracting oscillations.",
     targetSettle: "300ms – 450ms",
     desc: "Tactile finger-following spring release",
+    useCases: ["Navigation Drawers", "Side Panels", "Bottom Sheets"],
     variants: [
       {
         id: "drawer-physics-cushion",
@@ -181,6 +184,7 @@ const INITIAL_CUSTOM_CURVES: CustomEase[] = [
 ]
 
 export interface KineticAnatomy {
+  role: string
   launchVelocity: string
   settleCharacter: string
   feel: string
@@ -189,44 +193,58 @@ export interface KineticAnatomy {
 }
 
 export const ARCHETYPE_KINETICS: Record<string, KineticAnatomy> = {
-  fluid: {
-    launchVelocity: "Instant Acceleration (Peak at t=0)",
-    settleCharacter: "Asymptotic Friction Cushion (0% bounce)",
+  entrance: {
+    role: "Entrance Decel",
+    launchVelocity: "Peak impulse at t=0",
+    settleCharacter: "Asymptotic friction cushion (0% overshoot)",
     feel: "Fluid liquid glide mimicking physical friction",
     choreographyLaw:
-      "Primary Entrance Curve. Fast launch absorbs user momentum while cushioned braking allows the eye to lock onto content. Never use for exits—paired dismissals require an accelerating drop.",
-    timingSweetSpot: "250ms – 350ms (avoid > 450ms)",
+      "Primary Arrival Curve. Peak launch velocity absorbs user intent instantly, then cushions asymptotically into rest so the eye locks onto arriving content.",
+    timingSweetSpot: "250ms – 350ms",
   },
-  snappy: {
-    launchVelocity: "High-Tension Snap (Immediate impulse)",
-    settleCharacter: "Aggressive Damping (Zero ringing)",
-    feel: "Crisp physical response for direct manipulation",
+  exit: {
+    role: "Exit Dismissal",
+    launchVelocity: "Low-velocity departure building momentum",
+    settleCharacter: "Exits screen bounds before deceleration begins",
+    feel: "Accelerating departure off-screen",
     choreographyLaw:
-      "Direct Manipulation Curve. Responds instantly to touch and gesture releases. Damping ratio must remain high to avoid distracting oscillations.",
-    timingSweetSpot: "180ms – 250ms (avoid > 320ms)",
+      "Dismissal & Exit Curve. Accelerates departing elements off-screen into invisibility. Never decelerate on exit—lingering dismissals make UI feel sluggish.",
+    timingSweetSpot: "160ms – 240ms",
   },
-  system: {
-    launchVelocity: "Balanced S-Curve (Smooth acceleration)",
-    settleCharacter: "Symmetric Deceleration",
-    feel: "Calm, unobtrusive interface transition",
+  transit: {
+    role: "Transit S-Curve",
+    launchVelocity: "Gentle progressive ramp-up",
+    settleCharacter: "Symmetric deceleration into destination",
+    feel: "Calm, unobtrusive point-to-point transition",
     choreographyLaw:
-      "Standard Interface Motion. Moves elements comfortably across screen bounds without drawing undue attention to the motion itself.",
-    timingSweetSpot: "200ms – 300ms",
+      "Point-to-Point Transit. Moves elements comfortably across screen coordinates without drawing undue attention to the motion itself.",
+    timingSweetSpot: "200ms – 320ms",
   },
   expressive: {
-    launchVelocity: "High-Momentum Launch",
-    settleCharacter: "Controlled Rebound (+4% to +8% overshoot)",
+    role: "Expressive Pop",
+    launchVelocity: "High-momentum spring impulse",
+    settleCharacter: "Controlled +4% to +8% rebound",
     feel: "Playful kinetic character with tactile pop",
     choreographyLaw:
-      "Celebratory & Hero Motion. Controlled overshoot adds energy to notifications and badges. Never use on high-frequency transactional dialogs.",
-    timingSweetSpot: "350ms – 450ms",
+      "Celebratory & Hero Motion. Controlled overshoot adds energy to notifications and badges. Strictly avoid on high-frequency transactional dialogs.",
+    timingSweetSpot: "350ms – 460ms",
+  },
+  snappy: {
+    role: "Tactile Micro-Snap",
+    launchVelocity: "Zero-delay pointer impulse",
+    settleCharacter: "Critically damped stop (zero ringing)",
+    feel: "Crisp physical response for direct manipulation",
+    choreographyLaw:
+      "Direct Manipulation Response. Responds instantaneously to touch and gesture releases. Damping ratio must remain high to avoid visual jitter.",
+    timingSweetSpot: "140ms – 220ms",
   },
   mechanical: {
-    launchVelocity: "Constant Velocity (Zero acceleration)",
-    settleCharacter: "Immediate Abrupt Stop",
+    role: "Mechanical Step",
+    launchVelocity: "Constant velocity with zero acceleration",
+    settleCharacter: "Immediate quantized stop",
     feel: "Quantized, industrial, robotic precision",
     choreographyLaw:
-      "Functional UI States. Best for continuous loaders, progress bars, and clock hands where physical friction would feel unnatural.",
+      "Functional UI States. Best for continuous loaders, progress bars, and clock hands where natural physical friction feels inappropriate.",
     timingSweetSpot: "150ms – 300ms",
   },
 }
@@ -248,37 +266,85 @@ export interface EaseDossier {
   parentPreset?: string
 }
 
+function getPresetKineticIntel(
+  id: string,
+  name: string,
+  engine: "bezier" | "spring",
+  custom?: CustomEase
+): KineticAnatomy {
+  const lowerId = id.toLowerCase()
+  const lowerName = name.toLowerCase()
+  const parent = (custom?.parentPreset ?? "").toLowerCase()
+  const combined = `${lowerId} ${lowerName} ${parent}`
+
+  let base: KineticAnatomy
+
+  // 1. Exit / Acceleration
+  if (
+    combined.includes("exit") ||
+    combined.includes("accelerate") ||
+    lowerId === "ease-in" ||
+    (lowerId.includes("-in") && !lowerId.includes("-in-out"))
+  ) {
+    base = { ...ARCHETYPE_KINETICS.exit }
+  }
+  // 2. Entrance / Deceleration
+  else if (
+    combined.includes("decel") ||
+    combined.includes("modal") ||
+    combined.includes("sheet") ||
+    combined.includes("drawer") ||
+    lowerId === "ease-out" ||
+    (lowerId.includes("-out") && !lowerId.includes("-in-out")) ||
+    combined.includes("fluid")
+  ) {
+    base = { ...ARCHETYPE_KINETICS.entrance }
+  }
+  // 3. Expressive / Bouncy / Overshoot
+  else if (
+    combined.includes("bounce") ||
+    combined.includes("expressive") ||
+    combined.includes("pop") ||
+    combined.includes("back") ||
+    combined.includes("wobble") ||
+    combined.includes("toast")
+  ) {
+    base = { ...ARCHETYPE_KINETICS.expressive }
+  }
+  // 4. Snappy / Tactile / Fast
+  else if (
+    combined.includes("button") ||
+    combined.includes("snap") ||
+    combined.includes("fast") ||
+    combined.includes("subdued")
+  ) {
+    base = { ...ARCHETYPE_KINETICS.snappy }
+  }
+  // 5. Mechanical / Linear
+  else if (combined.includes("linear") || combined.includes("step")) {
+    base = { ...ARCHETYPE_KINETICS.mechanical }
+  }
+  // 6. Default to Transit S-Curve for Bezier, or Snappy for Springs
+  else {
+    base =
+      engine === "spring"
+        ? { ...ARCHETYPE_KINETICS.snappy }
+        : { ...ARCHETYPE_KINETICS.transit }
+  }
+
+  // Override with custom-calibrated values if present on CustomEase
+  if (custom?.guidance) {
+    base.choreographyLaw = custom.guidance
+  }
+  if (custom?.targetSettle) {
+    base.timingSweetSpot = custom.targetSettle
+  }
+
+  return base
+}
+
 function getPresetCategory(id: string, mode: "bezier" | "spring"): string {
-  const lower = id.toLowerCase()
-  if (
-    lower.includes("material") ||
-    lower.includes("ease") ||
-    lower.includes("standard")
-  )
-    return "system"
-  if (
-    lower.includes("apple") ||
-    lower.includes("fluid") ||
-    lower.includes("smooth") ||
-    lower.includes("power1")
-  )
-    return "fluid"
-  if (
-    lower.includes("snap") ||
-    lower.includes("fast") ||
-    lower.includes("anticipate")
-  )
-    return "snappy"
-  if (
-    lower.includes("bounce") ||
-    lower.includes("wobble") ||
-    lower.includes("cinematic") ||
-    lower.includes("overshoot") ||
-    lower.includes("expo")
-  )
-    return "expressive"
-  if (lower.includes("linear") || lower.includes("step")) return "mechanical"
-  return mode === "spring" ? "snappy" : "system"
+  return getPresetKineticIntel(id, id, mode).role
 }
 
 /**
@@ -319,6 +385,25 @@ export function Stage1Audition() {
     "CSS" | "Tailwind" | "Motion" | "SwiftUI"
   >("CSS")
   const [hasCopiedToken, setHasCopiedToken] = React.useState(false)
+  const [hasCopiedFormula, setHasCopiedFormula] = React.useState(false)
+  const [hasCopiedSnippet, setHasCopiedSnippet] = React.useState(false)
+
+  const handleCopyFormula = (val: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(val)
+      setHasCopiedFormula(true)
+      setTimeout(() => setHasCopiedFormula(false), 1500)
+    }
+  }
+
+  const handleCopySnippet = (snippet: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(snippet)
+      setHasCopiedSnippet(true)
+      setTimeout(() => setHasCopiedSnippet(false), 1500)
+    }
+  }
+
   const [compareSlotB, setCompareSlotB] = React.useState<{
     id: string
     name: string
@@ -341,9 +426,12 @@ export function Stage1Audition() {
       // 1. Check customCurves
       const custom = customCurves.find((c) => c.id === id)
       if (custom) {
-        const archetype = getPresetCategory(custom.id, custom.engine)
-        const kinetics =
-          ARCHETYPE_KINETICS[archetype] ?? ARCHETYPE_KINETICS.system
+        const kinetics = getPresetKineticIntel(
+          custom.id,
+          custom.name,
+          custom.engine,
+          custom
+        )
         return {
           id: custom.id,
           name: custom.name,
@@ -355,7 +443,10 @@ export function Stage1Audition() {
           spring: custom.spring,
           duration: custom.duration,
           description: custom.desc ?? "Custom calibrated easing curve",
-          useCases: ["Modal Dialogs", "Custom Sheets", "View Transitions"],
+          useCases: custom.useCases ?? [
+            "Direct Manipulation",
+            "Interactive Views",
+          ],
           kinetics,
           variants: custom.variants,
           parentPreset: custom.parentPreset,
@@ -366,9 +457,7 @@ export function Stage1Audition() {
       const bp = BEZIER_PRESETS.find((p) => p.id === id)
       if (bp) {
         const bConf = bp.value as BezierConfig
-        const archetype = getPresetCategory(bp.id, "bezier")
-        const kinetics =
-          ARCHETYPE_KINETICS[archetype] ?? ARCHETYPE_KINETICS.system
+        const kinetics = getPresetKineticIntel(bp.id, bp.label, "bezier")
         const valStr = `${bConf.p1.x.toFixed(2)}, ${bConf.p1.y.toFixed(2)}, ${bConf.p2.x.toFixed(2)}, ${bConf.p2.y.toFixed(2)}`
         let origin = "CSS Standard"
         if (bp.id.startsWith("material")) origin = "Material Design Standard"
@@ -404,9 +493,7 @@ export function Stage1Audition() {
       const sp = SPRING_PRESETS.find((p) => p.id === id)
       if (sp) {
         const sConf = sp.value as SpringConfig
-        const archetype = getPresetCategory(sp.id, "spring")
-        const kinetics =
-          ARCHETYPE_KINETICS[archetype] ?? ARCHETYPE_KINETICS.snappy
+        const kinetics = getPresetKineticIntel(sp.id, sp.label, "spring")
         const valStr = `m:${sConf.mass} s:${sConf.stiffness} d:${sConf.damping}`
         let origin = "Satisium Physics Standard"
         if (sp.id.includes("apple")) origin = "Apple HIG Fluid Spring"
@@ -1127,9 +1214,9 @@ export function Stage1Audition() {
             )}
           >
             {activeDossier && (
-              <div className="flex h-full flex-col justify-between">
-                {/* TOP & MIDDLE: MINIMALIST ESSENTIAL DOSSIER */}
-                <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-0.5">
+              <div className="flex h-full flex-col">
+                {/* TOP: COMPACT, ELEGANT KINETIC DOSSIER */}
+                <div className="flex shrink-0 flex-col gap-3 pb-1">
                   {/* Top Navigation Bar */}
                   <div className="flex shrink-0 items-center justify-between">
                     <button
@@ -1153,12 +1240,13 @@ export function Stage1Audition() {
                     <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
                       {activeDossier.name}
                     </h3>
-                    <span className="font-sans text-[11px] text-muted-foreground">
-                      {activeDossier.origin} ·{" "}
-                      {activeDossier.engine === "bezier"
-                        ? "Cubic Bezier"
-                        : "Physical Spring"}
-                    </span>
+                    <div className="flex items-center gap-1.5 font-sans text-[11px] text-muted-foreground">
+                      <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-[9px] font-semibold tracking-tight text-foreground uppercase">
+                        {activeDossier.kinetics.role}
+                      </span>
+                      <span>·</span>
+                      <span className="truncate">{activeDossier.origin}</span>
+                    </div>
                   </div>
 
                   {/* The Single Definitive Kinetic Law (Hero Statement) */}
@@ -1186,58 +1274,71 @@ export function Stage1Audition() {
                       </div>
                     )}
 
-                  {/* 2-Column Telemetry Row (Timing Sweet Spot & Specification) */}
-                  <div className="grid grid-cols-2 gap-2 pt-0.5">
-                    {/* Timing Sweet Spot */}
-                    <div className="flex flex-col gap-1">
-                      <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                        Sweet Spot
-                      </span>
-                      <span className="font-sans text-[11px] font-medium text-foreground">
-                        {activeDossier.kinetics.timingSweetSpot}
-                      </span>
-                    </div>
+                  {/* Timing Sweet Spot */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                      Sweet Spot
+                    </span>
+                    <span className="font-sans text-[11px] font-medium text-foreground">
+                      {activeDossier.kinetics.timingSweetSpot}
+                    </span>
+                  </div>
 
-                    {/* Specification (Formula Coordinates) */}
-                    <div className="flex flex-col gap-1">
+                  {/* Full-Width Formula Row with 1-Click Copy */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
                       <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                        Spec
+                        Formula Specification
                       </span>
-                      <span className="truncate rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-foreground">
-                        {activeDossier.values}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyFormula(activeDossier.values)}
+                        className="cursor-pointer font-sans text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {hasCopiedFormula ? "Copied ✓" : "Copy"}
+                      </button>
+                    </div>
+                    <div className="flex h-7 w-full items-center justify-between rounded-[8px] bg-muted px-2.5 font-mono text-[11px] font-medium text-foreground">
+                      <span className="truncate">{activeDossier.values}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* BOTTOM TRAY: ACCESSIBLE 2-COLUMN VARIANTS GRID OR FORK PRESET */}
+                {/* BOTTOM: OCCUPYING THE REMAINING SPACE NATURALLY */}
                 {activeDossier.isCustom ? (
-                  <div className="flex shrink-0 flex-col gap-1.5 pt-2">
-                    <div className="flex items-center justify-between px-0.5">
-                      <span className="font-heading text-xs font-semibold text-foreground">
-                        Variants
-                      </span>
-                      <span className="rounded-[6px] bg-secondary px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
-                        {activeDossier.variants?.length ?? 0}
+                  <div className="flex min-h-0 flex-1 flex-col pt-3">
+                    <div className="flex shrink-0 items-center justify-between px-0.5 pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-heading text-xs font-semibold text-foreground">
+                          Variants
+                        </span>
+                        <span className="rounded-[6px] bg-secondary px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
+                          {activeDossier.variants?.length ?? 0}
+                        </span>
+                      </div>
+                      <span className="font-sans text-[10px] text-muted-foreground">
+                        2x: open slide
                       </span>
                     </div>
 
-                    <div className="no-scrollbar grid max-h-[140px] grid-cols-2 gap-1.5 overflow-y-auto pt-0.5">
+                    {/* Responsive Grid Filling the Space Gracefully */}
+                    <div className="no-scrollbar grid flex-1 grid-cols-2 gap-2 overflow-y-auto pb-1">
                       {(activeDossier.variants ?? []).map((v) => {
                         const isSelected = activePresetId === v.id
                         const subVariantCount = v.variants?.length ?? 0
 
                         return (
-                          <div key={v.id} className="group relative w-full">
+                          <div
+                            key={v.id}
+                            className="group relative flex w-full flex-col"
+                          >
                             <button
                               type="button"
                               onClick={() => {
-                                // CLICK ONLY SELECTS / AUDITIONS IT (DOES NOT CHANGE CURRENT DOSSIER)
                                 setActivePresetId(v.id)
                                 setActiveEngine(v.engine)
                               }}
                               onDoubleClick={() => {
-                                // DOUBLE CLICK OPENS SLIDE WITH INFO REGARDING THIS VARIANT
                                 setNavStack({
                                   level: 2,
                                   curveId: activeDossier.id,
@@ -1246,14 +1347,14 @@ export function Stage1Audition() {
                               }}
                               title={`${v.name} · Click to audition · Double-click to open slide`}
                               className={cn(
-                                "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
+                                "relative flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] p-1 transition-all",
                                 isSelected
                                   ? "bg-foreground text-background"
                                   : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
                               )}
                             >
-                              {/* Inner Mini Graph Box */}
-                              <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
+                              {/* Inner Mini Graph Box with High Visual Balance */}
+                              <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-1.5">
                                 {subVariantCount > 0 && (
                                   <span className="pointer-events-none absolute top-1 left-1.5 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
                                     +{subVariantCount}
@@ -1274,8 +1375,8 @@ export function Stage1Audition() {
                               </div>
 
                               {/* Grounded Name Strip in Outer Box */}
-                              <div className="flex h-4.5 w-full items-center justify-center px-0.5">
-                                <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                              <div className="flex h-5 w-full items-center justify-center px-1">
+                                <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
                                   {v.name}
                                 </span>
                               </div>
@@ -1293,7 +1394,7 @@ export function Stage1Audition() {
                                 })
                               }}
                               title={`Open ${v.name} slide`}
-                              className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                              className="absolute top-2 right-2 z-10 flex size-4.5 cursor-pointer items-center justify-center rounded-[5px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
                             >
                               <HugeiconsIcon
                                 icon={ArrowUpRight01Icon}
@@ -1309,32 +1410,90 @@ export function Stage1Audition() {
                         type="button"
                         onClick={handleAddVariant}
                         title="Add variant"
-                        className="group flex w-full cursor-pointer flex-col items-center rounded-[10px] bg-muted p-0.5 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                        className="group flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
                       >
-                        <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-[8px] bg-background p-1">
+                        <div className="relative flex aspect-[16/10] w-full items-center justify-center rounded-[9px] bg-background p-1.5">
                           <HugeiconsIcon
                             icon={PlusSignIcon}
-                            className="size-3.5 text-muted-foreground group-hover:text-foreground"
+                            className="size-4 text-muted-foreground group-hover:text-foreground"
                           />
                         </div>
-                        <div className="flex h-4.5 w-full items-center justify-center px-0.5">
-                          <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
-                            Add Variant
+                        <div className="flex h-5 w-full items-center justify-center px-1">
+                          <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
+                            + Add Variant
                           </span>
                         </div>
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex shrink-0 flex-col pt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleForkPreset(activeDossier.id)}
-                      className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
-                    >
-                      <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
-                      <span>Fork to Custom Preset</span>
-                    </button>
+                  <div className="flex min-h-0 flex-1 flex-col justify-between pt-4">
+                    {/* Kinetic Physics Profile Cards */}
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex flex-col gap-1 rounded-[10px] bg-muted p-2.5">
+                        <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                          Launch Impulse
+                        </span>
+                        <span className="font-sans text-xs text-foreground">
+                          {activeDossier.kinetics.launchVelocity}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1 rounded-[10px] bg-muted p-2.5">
+                        <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                          Settle & Deceleration
+                        </span>
+                        <span className="font-sans text-xs text-foreground">
+                          {activeDossier.kinetics.settleCharacter}
+                        </span>
+                      </div>
+
+                      {/* Instant CSS snippet copy row */}
+                      <div className="flex flex-col gap-1 pt-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                            CSS Snippet
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopySnippet(
+                                `transition: all ${activeDossier.duration}ms ${
+                                  activeDossier.engine === "bezier"
+                                    ? `cubic-bezier(${activeDossier.values})`
+                                    : "ease"
+                                };`
+                              )
+                            }
+                            className="cursor-pointer font-sans text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            {hasCopiedSnippet ? "Copied ✓" : "Copy"}
+                          </button>
+                        </div>
+                        <div className="flex h-7 w-full items-center justify-between rounded-[8px] bg-muted px-2.5 font-mono text-[10px] text-foreground">
+                          <span className="truncate">
+                            {activeDossier.engine === "bezier"
+                              ? `cubic-bezier(${activeDossier.values})`
+                              : `spring(${activeDossier.values})`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Grounded Fork Button */}
+                    <div className="flex shrink-0 flex-col pt-3">
+                      <button
+                        type="button"
+                        onClick={() => handleForkPreset(activeDossier.id)}
+                        className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
+                      >
+                        <HugeiconsIcon
+                          icon={PlusSignIcon}
+                          className="size-3.5"
+                        />
+                        <span>Fork to Custom Preset</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1352,9 +1511,9 @@ export function Stage1Audition() {
             )}
           >
             {currentCurve && currentVariant && (
-              <div className="flex h-full flex-col justify-between">
-                {/* TOP & MIDDLE: MINIMALIST ESSENTIAL VARIANT DOSSIER */}
-                <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-0.5">
+              <div className="flex h-full flex-col">
+                {/* TOP: MINIMALIST ESSENTIAL VARIANT DOSSIER */}
+                <div className="flex shrink-0 flex-col gap-3 pb-1">
                   {/* Top Navigation */}
                   <div className="flex shrink-0 items-center justify-between">
                     <button
@@ -1392,20 +1551,29 @@ export function Stage1Audition() {
                     </p>
                   )}
 
-                  {/* Specification (Formula Coordinates) */}
-                  <div className="flex flex-col gap-1 pt-0.5">
-                    <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                      Spec
-                    </span>
-                    <span className="truncate rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-foreground">
-                      {currentVariant.values}
-                    </span>
+                  {/* Formula Specification (Full Width with 1-Click Copy) */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                        Formula Specification
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyFormula(currentVariant.values)}
+                        className="cursor-pointer font-sans text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {hasCopiedFormula ? "Copied ✓" : "Copy"}
+                      </button>
+                    </div>
+                    <div className="flex h-7 w-full items-center justify-between rounded-[8px] bg-muted px-2.5 font-mono text-[11px] font-medium text-foreground">
+                      <span className="truncate">{currentVariant.values}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* BOTTOM TRAY: 2-COLUMN ACCESSIBLE FLAVORS GRID */}
-                <div className="flex shrink-0 flex-col gap-1.5 pt-2">
-                  <div className="flex items-center justify-between px-0.5">
+                {/* BOTTOM: OCCUPYING THE REMAINING SPACE WITH FLAVORS GRID */}
+                <div className="flex min-h-0 flex-1 flex-col pt-3">
+                  <div className="flex shrink-0 items-center justify-between px-0.5 pb-2">
                     <span className="font-heading text-xs font-semibold text-foreground">
                       Flavors
                     </span>
@@ -1414,11 +1582,14 @@ export function Stage1Audition() {
                     </span>
                   </div>
 
-                  <div className="no-scrollbar grid max-h-[140px] grid-cols-2 gap-1.5 overflow-y-auto pt-0.5">
+                  <div className="no-scrollbar grid flex-1 grid-cols-2 gap-2 overflow-y-auto pb-1">
                     {(currentVariant.variants ?? []).map((sv) => {
                       const isSelected = activePresetId === sv.id
                       return (
-                        <div key={sv.id} className="group relative w-full">
+                        <div
+                          key={sv.id}
+                          className="group relative flex w-full flex-col"
+                        >
                           <button
                             type="button"
                             onClick={() => {
@@ -1428,13 +1599,13 @@ export function Stage1Audition() {
                             }}
                             title={`${sv.name} · Click to audition`}
                             className={cn(
-                              "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
+                              "relative flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] p-1 transition-all",
                               isSelected
                                 ? "bg-foreground text-background"
                                 : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
                             )}
                           >
-                            <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
+                            <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-1.5">
                               <MiniGraph
                                 mode={sv.engine}
                                 bezier={sv.bezier}
@@ -1447,8 +1618,8 @@ export function Stage1Audition() {
                                 )}
                               />
                             </div>
-                            <div className="flex h-4.5 w-full items-center justify-center px-0.5">
-                              <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                            <div className="flex h-5 w-full items-center justify-center px-1">
+                              <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
                                 {sv.name}
                               </span>
                             </div>
@@ -1462,17 +1633,17 @@ export function Stage1Audition() {
                       type="button"
                       onClick={handleAddFlavor}
                       title="Add flavor"
-                      className="group flex w-full cursor-pointer flex-col items-center rounded-[10px] bg-muted p-0.5 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                      className="group flex w-full flex-1 cursor-pointer flex-col items-center justify-between rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
                     >
-                      <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-[8px] bg-background p-1">
+                      <div className="relative flex aspect-[16/10] w-full items-center justify-center rounded-[9px] bg-background p-1.5">
                         <HugeiconsIcon
                           icon={PlusSignIcon}
-                          className="size-3.5 text-muted-foreground group-hover:text-foreground"
+                          className="size-4 text-muted-foreground group-hover:text-foreground"
                         />
                       </div>
-                      <div className="flex h-4.5 w-full items-center justify-center px-0.5">
-                        <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
-                          Add Flavor
+                      <div className="flex h-5 w-full items-center justify-center px-1">
+                        <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
+                          + Add Flavor
                         </span>
                       </div>
                     </button>
