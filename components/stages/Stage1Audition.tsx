@@ -9,88 +9,277 @@ import {
   Sun02Icon,
   Moon02Icon,
   ArrowUpRight01Icon,
+  ArrowLeft01Icon,
+  Layers01Icon,
+  Search01Icon,
+  Cancel01Icon,
+  PlusSignIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SiGithub } from "@icons-pack/react-simple-icons"
 import { useMounted } from "@/hooks/use-mounted"
 import { CommandMenuTrigger } from "@/components/layout/command-menu"
+import { MiniGraph } from "@/components/ui/mini-graph"
+import { BEZIER_PRESETS, SPRING_PRESETS } from "@/core/presets"
+import { BezierConfig, SpringConfig } from "@/core/types"
 import { ROUTES } from "@/lib/routes"
 import { PROJECT } from "@/lib/social-links"
 import { cn } from "@/lib/utils"
 
-interface PresetItem {
+export interface CustomEase {
   id: string
   name: string
-  category: "fluid" | "snappy" | "bouncy" | "mechanical"
+  label?: string
+  parentPreset: string
   engine: "bezier" | "spring"
   values: string
-  points?: [number, number, number, number]
+  bezier?: BezierConfig
+  spring?: SpringConfig
+  duration: number
+  guidance?: string
+  targetSettle?: string
+  desc?: string
+  variants?: CustomEase[]
 }
 
-const PRESET_CATALOG: PresetItem[] = [
+const INITIAL_CUSTOM_CURVES: CustomEase[] = [
   {
-    id: "std-decel",
-    name: "Standard Decelerate",
-    category: "fluid",
+    id: "modal-sheet",
+    name: "Modal Sheet",
+    label: "Main",
+    parentPreset: "Apple Fluid Decel",
     engine: "bezier",
-    values: "0.0, 0.0, 0.2, 1.0",
-    points: [0.0, 0.0, 0.2, 1.0],
+    values: "0.16, 1.00, 0.30, 1.00",
+    bezier: { p1: { x: 0.16, y: 1.0 }, p2: { x: 0.3, y: 1.0 } },
+    duration: 350,
+    guidance:
+      "Centered modals demand swift acceleration with cushioned deceleration. Never bounce > 1 time in transactional UI.",
+    targetSettle: "250ms – 350ms",
+    desc: "Primary modal acceleration with balanced settle",
+    variants: [
+      {
+        id: "modal-sheet-exit",
+        name: "Exit",
+        label: "Exit Dismissal",
+        parentPreset: "Modal Sheet",
+        engine: "bezier",
+        values: "0.40, 0.00, 1.00, 1.00",
+        bezier: { p1: { x: 0.4, y: 0.0 }, p2: { x: 1.0, y: 1.0 } },
+        duration: 220,
+        desc: "Quick cushioned dismissal for backdrop drops",
+        variants: [
+          {
+            id: "modal-sheet-exit-standard",
+            name: "Standard",
+            label: "Standard Exit",
+            parentPreset: "Exit",
+            engine: "bezier",
+            values: "0.40, 0.00, 1.00, 1.00",
+            bezier: { p1: { x: 0.4, y: 0.0 }, p2: { x: 1.0, y: 1.0 } },
+            duration: 220,
+            desc: "220ms balanced backdrop decay",
+          },
+          {
+            id: "modal-sheet-exit-swift",
+            name: "Swift",
+            label: "Swift Exit",
+            parentPreset: "Exit",
+            engine: "bezier",
+            values: "0.70, 0.00, 1.00, 1.00",
+            bezier: { p1: { x: 0.7, y: 0.0 }, p2: { x: 1.0, y: 1.0 } },
+            duration: 160,
+            desc: "Near-instantaneous dismissal for power users",
+          },
+        ],
+      },
+      {
+        id: "modal-sheet-expressive",
+        name: "Expressive",
+        label: "Expressive Overshoot",
+        parentPreset: "Modal Sheet",
+        engine: "bezier",
+        values: "0.12, 1.15, 0.25, 1.00",
+        bezier: { p1: { x: 0.12, y: 1.15 }, p2: { x: 0.25, y: 1.0 } },
+        duration: 420,
+        desc: "Snappy entry with intentional +4% overshoot",
+        variants: [
+          {
+            id: "modal-sheet-expressive-standard",
+            name: "Standard",
+            label: "Standard +4%",
+            parentPreset: "Expressive",
+            engine: "bezier",
+            values: "0.12, 1.15, 0.25, 1.00",
+            bezier: { p1: { x: 0.12, y: 1.15 }, p2: { x: 0.25, y: 1.0 } },
+            duration: 420,
+            desc: "Balanced intentional overshoot for dialogs",
+          },
+          {
+            id: "modal-sheet-expressive-high",
+            name: "High Pop",
+            label: "High Pop +8%",
+            parentPreset: "Expressive",
+            engine: "bezier",
+            values: "0.10, 1.25, 0.20, 1.00",
+            bezier: { p1: { x: 0.1, y: 1.25 }, p2: { x: 0.2, y: 1.0 } },
+            duration: 460,
+            desc: "Energetic +8% bounce overshoot for marketing modals",
+          },
+        ],
+      },
+      {
+        id: "modal-sheet-subdued",
+        name: "Subdued",
+        label: "Subdued Utility",
+        parentPreset: "Modal Sheet",
+        engine: "bezier",
+        values: "0.25, 1.00, 0.50, 1.00",
+        bezier: { p1: { x: 0.25, y: 1.0 }, p2: { x: 0.5, y: 1.0 } },
+        duration: 220,
+        desc: "Swift compact motion for utility alerts",
+      },
+    ],
   },
   {
-    id: "m3-emphasized",
-    name: "Material 3 Emphasized",
-    category: "snappy",
-    engine: "bezier",
-    values: "0.2, 0.0, 0.0, 1.0",
-    points: [0.2, 0.0, 0.0, 1.0],
-  },
-  {
-    id: "apple-fluid",
-    name: "Apple Fluid Decel",
-    category: "fluid",
-    engine: "bezier",
-    values: "0.25, 1.0, 0.5, 1.0",
-    points: [0.25, 1.0, 0.5, 1.0],
-  },
-  {
-    id: "snappy-out",
-    name: "Snappy Anticipate",
-    category: "snappy",
-    engine: "bezier",
-    values: "0.16, 1.0, 0.3, 1.0",
-    points: [0.16, 1.0, 0.3, 1.0],
-  },
-  {
-    id: "bouncy-overshoot",
-    name: "Bouncy Back Overshoot",
-    category: "bouncy",
-    engine: "bezier",
-    values: "0.34, 1.56, 0.64, 1.0",
-    points: [0.34, 1.56, 0.64, 1.0],
-  },
-  {
-    id: "mechanical-linear",
-    name: "Linear Uniform",
-    category: "mechanical",
-    engine: "bezier",
-    values: "0.0, 0.0, 1.0, 1.0",
-    points: [0.0, 0.0, 1.0, 1.0],
-  },
-  {
-    id: "spring-cushioned",
-    name: "Cushioned Spring",
-    category: "fluid",
+    id: "drawer-physics",
+    name: "Drawer Physics",
+    label: "Main",
+    parentPreset: "Snappy Spring",
     engine: "spring",
-    values: "k:300 · c:30 · m:1",
-  },
-  {
-    id: "spring-bouncy",
-    name: "Snappy Spring",
-    category: "bouncy",
-    engine: "spring",
-    values: "k:240 · c:14 · m:1",
+    values: "m:1 s:340 d:28",
+    spring: { mass: 1, stiffness: 340, damping: 28, velocity: 0 },
+    duration: 380,
+    guidance:
+      "Side sheets and drawers follow finger release velocity. Maintain high damping ratio to prevent distracting oscillations.",
+    targetSettle: "300ms – 450ms",
+    desc: "Tactile finger-following spring release",
+    variants: [
+      {
+        id: "drawer-physics-cushion",
+        name: "Cushioned",
+        label: "Cushioned Glide",
+        parentPreset: "Drawer Physics",
+        engine: "spring",
+        values: "m:1 s:220 d:22",
+        spring: { mass: 1, stiffness: 220, damping: 22, velocity: 0 },
+        duration: 440,
+        desc: "Zero-ringing glide for calm UI sheets",
+      },
+      {
+        id: "drawer-physics-energetic",
+        name: "Energetic",
+        label: "Energetic Rebound",
+        parentPreset: "Drawer Physics",
+        engine: "spring",
+        values: "m:1 s:300 d:20",
+        spring: { mass: 1, stiffness: 300, damping: 20, velocity: 0 },
+        duration: 440,
+        desc: "Playful spring with subtle rebound",
+      },
+    ],
   },
 ]
+
+export interface KineticAnatomy {
+  launchVelocity: string
+  settleCharacter: string
+  feel: string
+  choreographyLaw: string
+  timingSweetSpot: string
+}
+
+export const ARCHETYPE_KINETICS: Record<string, KineticAnatomy> = {
+  fluid: {
+    launchVelocity: "Instant Acceleration (Peak at t=0)",
+    settleCharacter: "Asymptotic Friction Cushion (0% bounce)",
+    feel: "Fluid liquid glide mimicking physical friction",
+    choreographyLaw:
+      "Primary Entrance Curve. Fast launch absorbs user momentum while cushioned braking allows the eye to lock onto content. Never use for exits—paired dismissals require an accelerating drop.",
+    timingSweetSpot: "250ms – 350ms (avoid > 450ms)",
+  },
+  snappy: {
+    launchVelocity: "High-Tension Snap (Immediate impulse)",
+    settleCharacter: "Aggressive Damping (Zero ringing)",
+    feel: "Crisp physical response for direct manipulation",
+    choreographyLaw:
+      "Direct Manipulation Curve. Responds instantly to touch and gesture releases. Damping ratio must remain high to avoid distracting oscillations.",
+    timingSweetSpot: "180ms – 250ms (avoid > 320ms)",
+  },
+  system: {
+    launchVelocity: "Balanced S-Curve (Smooth acceleration)",
+    settleCharacter: "Symmetric Deceleration",
+    feel: "Calm, unobtrusive interface transition",
+    choreographyLaw:
+      "Standard Interface Motion. Moves elements comfortably across screen bounds without drawing undue attention to the motion itself.",
+    timingSweetSpot: "200ms – 300ms",
+  },
+  expressive: {
+    launchVelocity: "High-Momentum Launch",
+    settleCharacter: "Controlled Rebound (+4% to +8% overshoot)",
+    feel: "Playful kinetic character with tactile pop",
+    choreographyLaw:
+      "Celebratory & Hero Motion. Controlled overshoot adds energy to notifications and badges. Never use on high-frequency transactional dialogs.",
+    timingSweetSpot: "350ms – 450ms",
+  },
+  mechanical: {
+    launchVelocity: "Constant Velocity (Zero acceleration)",
+    settleCharacter: "Immediate Abrupt Stop",
+    feel: "Quantized, industrial, robotic precision",
+    choreographyLaw:
+      "Functional UI States. Best for continuous loaders, progress bars, and clock hands where physical friction would feel unnatural.",
+    timingSweetSpot: "150ms – 300ms",
+  },
+}
+
+export interface EaseDossier {
+  id: string
+  name: string
+  origin: string
+  isCustom: boolean
+  engine: "bezier" | "spring"
+  values: string
+  bezier?: BezierConfig
+  spring?: SpringConfig
+  duration: number
+  description: string
+  useCases: string[]
+  kinetics: KineticAnatomy
+  variants?: CustomEase[]
+  parentPreset?: string
+}
+
+function getPresetCategory(id: string, mode: "bezier" | "spring"): string {
+  const lower = id.toLowerCase()
+  if (
+    lower.includes("material") ||
+    lower.includes("ease") ||
+    lower.includes("standard")
+  )
+    return "system"
+  if (
+    lower.includes("apple") ||
+    lower.includes("fluid") ||
+    lower.includes("smooth") ||
+    lower.includes("power1")
+  )
+    return "fluid"
+  if (
+    lower.includes("snap") ||
+    lower.includes("fast") ||
+    lower.includes("anticipate")
+  )
+    return "snappy"
+  if (
+    lower.includes("bounce") ||
+    lower.includes("wobble") ||
+    lower.includes("cinematic") ||
+    lower.includes("overshoot") ||
+    lower.includes("expo")
+  )
+    return "expressive"
+  if (lower.includes("linear") || lower.includes("step")) return "mechanical"
+  return mode === "spring" ? "snappy" : "system"
+}
 
 /**
  * ============================================================================
@@ -109,25 +298,399 @@ export function Stage1Audition() {
   const [activeEngine, setActiveEngine] = React.useState<"bezier" | "spring">(
     "bezier"
   )
-  const [activeCategory, setActiveCategory] = React.useState<string>("all")
-  const [activePresetId, setActivePresetId] =
-    React.useState<string>("std-decel")
-  const [searchQuery] = React.useState<string>("")
+  const [activePresetId, setActivePresetId] = React.useState<string>("ease")
+  const [searchQuery, setSearchQuery] = React.useState<string>("")
+  const [customCurves, setCustomCurves] = React.useState<CustomEase[]>(
+    INITIAL_CUSTOM_CURVES
+  )
+  const [hoveredCurveMeta, setHoveredCurveMeta] = React.useState<{
+    name: string
+    duration?: number
+    archetype?: string
+  } | null>(null)
+  type StackLevel =
+    | { level: 0 }
+    | { level: 1; curveId: string }
+    | { level: 2; curveId: string; variantId: string }
+
+  const [navStack, setNavStack] = React.useState<StackLevel>({ level: 0 })
+  const [isGhostMode, setIsGhostMode] = React.useState<boolean>(false)
+  const [exportFramework, setExportFramework] = React.useState<
+    "CSS" | "Tailwind" | "Motion" | "SwiftUI"
+  >("CSS")
+  const [hasCopiedToken, setHasCopiedToken] = React.useState(false)
+  const [compareSlotB, setCompareSlotB] = React.useState<{
+    id: string
+    name: string
+    duration: number
+    engine: "bezier" | "spring"
+    values: string
+    bezier?: BezierConfig
+    spring?: SpringConfig
+  }>({
+    id: "apple-fluid-decel",
+    name: "Apple Fluid Decel",
+    duration: 350,
+    engine: "bezier",
+    values: "0.16, 1.00, 0.30, 1.00",
+    bezier: { p1: { x: 0.16, y: 1.0 }, p2: { x: 0.3, y: 1.0 } },
+  })
+
+  const resolveEase = React.useCallback(
+    (id: string): EaseDossier | undefined => {
+      // 1. Check customCurves
+      const custom = customCurves.find((c) => c.id === id)
+      if (custom) {
+        const archetype = getPresetCategory(custom.id, custom.engine)
+        const kinetics =
+          ARCHETYPE_KINETICS[archetype] ?? ARCHETYPE_KINETICS.system
+        return {
+          id: custom.id,
+          name: custom.name,
+          origin: `Forked from ${custom.parentPreset}`,
+          isCustom: true,
+          engine: custom.engine,
+          values: custom.values,
+          bezier: custom.bezier,
+          spring: custom.spring,
+          duration: custom.duration,
+          description: custom.desc ?? "Custom calibrated easing curve",
+          useCases: ["Modal Dialogs", "Custom Sheets", "View Transitions"],
+          kinetics,
+          variants: custom.variants,
+          parentPreset: custom.parentPreset,
+        }
+      }
+
+      // 2. Check BEZIER_PRESETS
+      const bp = BEZIER_PRESETS.find((p) => p.id === id)
+      if (bp) {
+        const bConf = bp.value as BezierConfig
+        const archetype = getPresetCategory(bp.id, "bezier")
+        const kinetics =
+          ARCHETYPE_KINETICS[archetype] ?? ARCHETYPE_KINETICS.system
+        const valStr = `${bConf.p1.x.toFixed(2)}, ${bConf.p1.y.toFixed(2)}, ${bConf.p2.x.toFixed(2)}, ${bConf.p2.y.toFixed(2)}`
+        let origin = "CSS Standard"
+        if (bp.id.startsWith("material")) origin = "Material Design Standard"
+        else if (bp.id.startsWith("apple")) origin = "Apple HIG Standard"
+        else if (
+          bp.id.startsWith("power") ||
+          bp.id.startsWith("sine") ||
+          bp.id.startsWith("quad") ||
+          bp.id.startsWith("cubic") ||
+          bp.id.startsWith("quart") ||
+          bp.id.startsWith("quint") ||
+          bp.id.startsWith("expo") ||
+          bp.id.startsWith("circ")
+        )
+          origin = "Penner Mathematical Curve"
+
+        return {
+          id: bp.id,
+          name: bp.label,
+          origin,
+          isCustom: false,
+          engine: "bezier",
+          values: valStr,
+          bezier: bConf,
+          duration: 350,
+          description: bp.description,
+          useCases: bp.useCases,
+          kinetics,
+        }
+      }
+
+      // 3. Check SPRING_PRESETS
+      const sp = SPRING_PRESETS.find((p) => p.id === id)
+      if (sp) {
+        const sConf = sp.value as SpringConfig
+        const archetype = getPresetCategory(sp.id, "spring")
+        const kinetics =
+          ARCHETYPE_KINETICS[archetype] ?? ARCHETYPE_KINETICS.snappy
+        const valStr = `m:${sConf.mass} s:${sConf.stiffness} d:${sConf.damping}`
+        let origin = "Satisium Physics Standard"
+        if (sp.id.includes("apple")) origin = "Apple HIG Fluid Spring"
+        else if (sp.id.includes("material")) origin = "Material Design Spring"
+
+        return {
+          id: sp.id,
+          name: sp.label,
+          origin,
+          isCustom: false,
+          engine: "spring",
+          values: valStr,
+          spring: sConf,
+          duration: 440,
+          description: sp.description,
+          useCases: sp.useCases,
+          kinetics,
+        }
+      }
+
+      return undefined
+    },
+    [customCurves]
+  )
+
+  const activeDossier =
+    navStack.level === 1 ? resolveEase(navStack.curveId) : undefined
+
+  const currentCurve =
+    navStack.level !== 0
+      ? customCurves.find((c) => c.id === navStack.curveId)
+      : undefined
+
+  const currentVariant =
+    navStack.level === 2 && currentCurve?.variants
+      ? currentCurve.variants.find((v) => v.id === navStack.variantId)
+      : undefined
+
+  const handleForkPreset = (presetId: string) => {
+    const dossier = resolveEase(presetId)
+    if (!dossier) return
+    const newCustomId = `custom-${dossier.id}-${Date.now().toString(36).slice(-4)}`
+    const newCustom: CustomEase = {
+      id: newCustomId,
+      name: `${dossier.name} (Custom)`,
+      label: "Main",
+      parentPreset: dossier.name,
+      engine: dossier.engine,
+      values: dossier.values,
+      bezier: dossier.bezier ? { ...dossier.bezier } : undefined,
+      spring: dossier.spring ? { ...dossier.spring } : undefined,
+      duration: dossier.duration,
+      desc: `Custom branch of ${dossier.name}`,
+      guidance: dossier.kinetics.choreographyLaw,
+      targetSettle: dossier.kinetics.timingSweetSpot,
+      variants: [],
+    }
+    setCustomCurves((prev) => [newCustom, ...prev])
+    setActivePresetId(newCustom.id)
+    setActiveEngine(newCustom.engine)
+    setNavStack({ level: 1, curveId: newCustom.id })
+  }
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setNavStack((prev) => {
+          if (prev.level === 2) return { level: 1, curveId: prev.curveId }
+          if (prev.level === 1) return { level: 0 }
+          return prev
+        })
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  const handleCustomCurveClick = (curve: CustomEase) => {
+    setActivePresetId(curve.id)
+    setActiveEngine(curve.engine)
+  }
+
+  const handleAddVariant = () => {
+    if (!currentCurve) return
+    const newIndex = (currentCurve.variants?.length ?? 0) + 1
+    const newVariant: CustomEase = {
+      id: `${currentCurve.id}-v${newIndex}-${Date.now().toString(36).slice(-4)}`,
+      name: `Variant ${newIndex}`,
+      label: `Variant ${newIndex}`,
+      parentPreset: currentCurve.name,
+      engine: currentCurve.engine,
+      values: currentCurve.values,
+      bezier: currentCurve.bezier ? { ...currentCurve.bezier } : undefined,
+      spring: currentCurve.spring ? { ...currentCurve.spring } : undefined,
+      duration: currentCurve.duration,
+      desc: `Branch ${newIndex} of ${currentCurve.name}`,
+    }
+    setCustomCurves((prev) =>
+      prev.map((c) =>
+        c.id === currentCurve.id
+          ? { ...c, variants: [...(c.variants ?? []), newVariant] }
+          : c
+      )
+    )
+    setActivePresetId(newVariant.id)
+    setActiveEngine(newVariant.engine)
+  }
+
+  const handleAddFlavor = () => {
+    if (!currentCurve || !currentVariant) return
+    const newIndex = (currentVariant.variants?.length ?? 0) + 1
+    const newFlavor: CustomEase = {
+      id: `${currentVariant.id}-f${newIndex}-${Date.now().toString(36).slice(-4)}`,
+      name: `Flavor ${newIndex}`,
+      label: `Flavor ${newIndex}`,
+      parentPreset: currentVariant.name,
+      engine: currentVariant.engine,
+      values: currentVariant.values,
+      bezier: currentVariant.bezier ? { ...currentVariant.bezier } : undefined,
+      spring: currentVariant.spring ? { ...currentVariant.spring } : undefined,
+      duration: currentVariant.duration,
+      desc: `Calibrated flavor ${newIndex} of ${currentVariant.name}`,
+    }
+    setCustomCurves((prev) =>
+      prev.map((c) =>
+        c.id === currentCurve.id
+          ? {
+              ...c,
+              variants: (c.variants ?? []).map((v) =>
+                v.id === currentVariant.id
+                  ? { ...v, variants: [...(v.variants ?? []), newFlavor] }
+                  : v
+              ),
+            }
+          : c
+      )
+    )
+    setActivePresetId(newFlavor.id)
+    setActiveEngine(newFlavor.engine)
+  }
+
+  const scrollRef = React.useRef<HTMLDivElement>(null)
+  const [isScrolledTop, setIsScrolledTop] = React.useState(false)
+  const [isScrolledBottom, setIsScrolledBottom] = React.useState(false)
+
+  const checkScroll = React.useCallback(() => {
+    if (!scrollRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+    setIsScrolledTop(scrollTop > 0)
+    setIsScrolledBottom(Math.ceil(scrollTop + clientHeight) < scrollHeight - 1)
+  }, [])
+
+  React.useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    checkScroll()
+    const ro = new ResizeObserver(() => checkScroll())
+    const mo = new MutationObserver(() => checkScroll())
+    ro.observe(el)
+    mo.observe(el, { childList: true, subtree: true, attributes: true })
+    return () => {
+      ro.disconnect()
+      mo.disconnect()
+    }
+  }, [checkScroll])
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark")
   }
 
-  const filteredPresets = PRESET_CATALOG.filter((p) => {
-    if (p.engine !== activeEngine) return false
-    if (activeCategory !== "all" && p.category !== activeCategory) return false
-    if (
-      searchQuery &&
-      !p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-      return false
-    return true
-  })
+  const filteredSystemPresets = React.useMemo(() => {
+    const list = activeEngine === "bezier" ? BEZIER_PRESETS : SPRING_PRESETS
+    if (!searchQuery) return list
+    const query = searchQuery.toLowerCase()
+    return list.filter((p) => {
+      const matchName = p.label.toLowerCase().includes(query)
+      const matchDesc = p.description.toLowerCase().includes(query)
+      const matchUse = p.useCases.some((u) => u.toLowerCase().includes(query))
+      return matchName || matchDesc || matchUse
+    })
+  }, [activeEngine, searchQuery])
+
+  const getActivePresetMeta = () => {
+    // Check if active curve is in customCurves hierarchy
+    for (const c of customCurves) {
+      if (activePresetId === c.id) {
+        return {
+          name: c.name,
+          subtitle: c.desc ?? `Custom · Forked from ${c.parentPreset}`,
+          engine: c.engine,
+          values: c.values,
+          bezier: c.bezier,
+          spring: c.spring,
+          duration: c.duration,
+        }
+      }
+      if (c.variants) {
+        for (const v of c.variants) {
+          if (activePresetId === v.id) {
+            return {
+              name: `${c.name} · ${v.name}`,
+              subtitle: v.desc ?? `Variant · Forked from ${c.name}`,
+              engine: v.engine,
+              values: v.values,
+              bezier: v.bezier,
+              spring: v.spring,
+              duration: v.duration,
+            }
+          }
+          if (v.variants) {
+            for (const sv of v.variants) {
+              if (activePresetId === sv.id) {
+                return {
+                  name: `${c.name} · ${v.name} · ${sv.name}`,
+                  subtitle: sv.desc ?? `Flavor · Forked from ${v.name}`,
+                  engine: sv.engine,
+                  values: sv.values,
+                  bezier: sv.bezier,
+                  spring: sv.spring,
+                  duration: sv.duration,
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    // Otherwise find in system presets
+    const allPresets =
+      activeEngine === "bezier" ? BEZIER_PRESETS : SPRING_PRESETS
+    const found =
+      allPresets.find((p) => p.id === activePresetId) ?? allPresets[0]
+    const bConf =
+      activeEngine === "bezier" ? (found.value as BezierConfig) : undefined
+    const sConf =
+      activeEngine === "spring" ? (found.value as SpringConfig) : undefined
+    const valuesStr =
+      activeEngine === "bezier" && bConf
+        ? `${bConf.p1.x.toFixed(2)}, ${bConf.p1.y.toFixed(2)}, ${bConf.p2.x.toFixed(2)}, ${bConf.p2.y.toFixed(2)}`
+        : sConf
+          ? `m:${sConf.mass} s:${sConf.stiffness} d:${sConf.damping}`
+          : ""
+    return {
+      name: found.label,
+      subtitle: found.description,
+      engine: activeEngine,
+      values: valuesStr,
+      bezier: bConf,
+      spring: sConf,
+      duration: 320,
+    }
+  }
+
+  const activePresetMeta = getActivePresetMeta()
+
+  const getExportSnippet = () => {
+    const dur = activePresetMeta.duration
+    const val = activePresetMeta.values
+    if (exportFramework === "CSS") {
+      return activePresetMeta.engine === "bezier"
+        ? `transition: all ${dur}ms cubic-bezier(${val});`
+        : `/* Spring: ${val} (${dur}ms) */`
+    }
+    if (exportFramework === "Tailwind") {
+      return activePresetMeta.engine === "bezier"
+        ? `transition-all duration-[${dur}ms] ease-[cubic-bezier(${val})]`
+        : `transition-all duration-[${dur}ms]`
+    }
+    if (exportFramework === "Motion") {
+      return `<motion.div\n  transition={{\n    duration: ${(dur / 1000).toFixed(2)},\n    ease: [${val}],\n  }}\n/>`
+    }
+    if (exportFramework === "SwiftUI") {
+      return `.animation(\n  .timingCurve(${val},\n    duration: ${(dur / 1000).toFixed(2)}\n  ),\n  value: trigger\n)`
+    }
+    return ""
+  }
+
+  const handleCopyToken = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(getExportSnippet())
+      setHasCopiedToken(true)
+      setTimeout(() => setHasCopiedToken(false), 2000)
+    }
+  }
 
   return (
     <div className="flex h-dvh w-full gap-2 overflow-hidden bg-muted p-2 font-sans select-none">
@@ -152,8 +715,8 @@ export function Stage1Audition() {
                     Ease
                   </span>
                 </div>
-                <span className="font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
-                  v 1.0
+                <span className="font-sans text-[11px] font-normal text-muted-foreground">
+                  v1.0
                 </span>
               </div>
             </div>
@@ -190,7 +753,7 @@ export function Stage1Audition() {
           </div>
 
           {/* ACTION ROW: COMMAND MENU TRIGGER + 3 CLEAN SQUIRCLES */}
-          <div className="flex items-center gap-1.5">
+          <div className="mt-1 flex items-center gap-1.5">
             {/* Command Menu Trigger (Default Wide Variant) */}
             <CommandMenuTrigger className="h-9 w-auto min-w-0 flex-1 rounded-[10px] bg-background px-3 text-xs text-muted-foreground shadow-none transition-colors hover:bg-secondary hover:text-foreground" />
 
@@ -232,167 +795,1070 @@ export function Stage1Audition() {
           </div>
         </header>
 
-        {/* BLOCK 2: PRESET CATALOG & FILTERS (FILL REMAINING HEIGHT) */}
-        <section
-          aria-label="Block 2: Preset Catalog and Filters"
-          className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden rounded-[20px] bg-background p-3 transition-colors"
-        >
-          {/* Engine Tabs (Segmented 28px Track) */}
-          <div className="flex h-7 w-full shrink-0 items-center rounded-[10px] bg-muted p-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveEngine("bezier")}
-              className={cn(
-                "h-full flex-1 rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
-                activeEngine === "bezier"
-                  ? "bg-background text-foreground shadow-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Bezier (18)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveEngine("spring")}
-              className={cn(
-                "h-full flex-1 rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
-                activeEngine === "spring"
-                  ? "bg-background text-foreground shadow-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Spring (8)
-            </button>
-          </div>
+        {/* BLOCK 2 CHASSIS BAY: PHYSICAL SLIDING BLOCK TRACK (FILLS 100% REMAINING HEIGHT) */}
+        <div className="relative min-h-0 w-full flex-1 overflow-hidden">
+          {/* LEVEL 0: ROOT CATALOG BLOCK (THE PHYSICAL MONOLITHIC SLAB) */}
+          <section
+            aria-label="Block 02: Preset Catalog"
+            className={cn(
+              "absolute inset-0 flex flex-col rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
+              navStack.level === 0
+                ? "pointer-events-auto translate-x-0"
+                : "pointer-events-none -translate-x-[calc(100%+8px)]"
+            )}
+          >
+            {/* 1. APEX: CUSTOM CURVES */}
+            {customCurves.length > 0 && (
+              <div className="mb-1 flex shrink-0 flex-col gap-1.5 pb-3.5">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="font-heading text-xs font-semibold text-foreground">
+                    Custom curves
+                  </span>
+                </div>
 
-          {/* Category Filter Chips */}
-          <div className="flex shrink-0 flex-wrap gap-1">
-            {["all", "fluid", "snappy", "bouncy", "mechanical"].map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setActiveCategory(cat)}
-                className={cn(
-                  "rounded-[6px] px-2 py-0.5 font-mono text-[9px] capitalize transition-colors",
-                  activeCategory === cat
-                    ? "bg-foreground font-semibold text-background"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {customCurves.map((curve) => {
+                    const isSelected =
+                      activePresetId === curve.id ||
+                      Boolean(
+                        curve.variants?.some(
+                          (v) =>
+                            v.id === activePresetId ||
+                            v.variants?.some((sv) => sv.id === activePresetId)
+                        )
+                      )
+                    const variantCount = curve.variants?.length ?? 0
 
-          {/* Scrollable Preset Inventory Deck */}
-          <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-0.5">
-            {filteredPresets.map((item) => {
-              const isActive = item.id === activePresetId
-              return (
+                    return (
+                      <div
+                        key={curve.id}
+                        className="group relative flex w-full flex-col"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleCustomCurveClick(curve)}
+                          onDoubleClick={() =>
+                            setNavStack({ level: 1, curveId: curve.id })
+                          }
+                          onMouseEnter={() =>
+                            setHoveredCurveMeta({
+                              name: curve.name,
+                              duration: curve.duration,
+                              archetype: "Custom",
+                            })
+                          }
+                          onMouseLeave={() => setHoveredCurveMeta(null)}
+                          title={
+                            variantCount > 0
+                              ? `${curve.name} · Click to audition · Double-click to expand variants`
+                              : `${curve.name} · Double-click to expand`
+                          }
+                          className={cn(
+                            "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
+                            isSelected
+                              ? "bg-foreground text-background"
+                              : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          )}
+                        >
+                          {/* Inner Mini Graph Box (Sleek Screen with Breathing Room) */}
+                          <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
+                            {/* Top-Left Variant Badge */}
+                            {variantCount > 0 && (
+                              <span className="pointer-events-none absolute top-1 left-1.5 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
+                                +{variantCount}
+                              </span>
+                            )}
+
+                            <MiniGraph
+                              mode={curve.engine}
+                              bezier={curve.bezier}
+                              spring={curve.spring}
+                              className={cn(
+                                "h-full w-full stroke-2 transition-colors",
+                                isSelected
+                                  ? "stroke-foreground"
+                                  : "stroke-muted-foreground group-hover:stroke-foreground"
+                              )}
+                            />
+                          </div>
+
+                          {/* Grounded Name Strip in Outer Box */}
+                          <div className="flex h-4.5 w-full items-center justify-center px-0.5">
+                            <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                              {curve.name}
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Quick Inspect Button on Hover (Top-Right of Inner Box) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setNavStack({ level: 1, curveId: curve.id })
+                          }}
+                          title="Open Ease Studio"
+                          className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                        >
+                          <HugeiconsIcon
+                            icon={ArrowUpRight01Icon}
+                            className="size-2.5"
+                          />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 2. LIBRARY QUERY CONTROLS (ENGINE SWITCHER + SEARCH + CATEGORY FILTER) */}
+            <div className="flex shrink-0 flex-col gap-1.5 pt-0.5">
+              {/* Engine Switcher */}
+              <div className="flex h-7 w-full shrink-0 items-center rounded-[10px] bg-muted p-0.5">
                 <button
-                  key={item.id}
                   type="button"
-                  onClick={() => setActivePresetId(item.id)}
+                  onClick={() => {
+                    setActiveEngine("bezier")
+                    setActivePresetId("ease")
+                  }}
                   className={cn(
-                    "group flex w-full items-center justify-between rounded-[12px] p-2 text-left transition-colors",
-                    isActive
-                      ? "bg-secondary text-foreground"
-                      : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                    "h-full flex-1 cursor-pointer rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
+                    activeEngine === "bezier"
+                      ? "bg-background text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate font-heading text-xs font-medium text-foreground">
-                      {item.name}
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {item.values}
-                    </span>
-                  </div>
-
-                  {/* SVG Physics Curve Sparkline */}
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[6px] bg-muted p-1">
-                    <svg
-                      viewBox="0 0 36 20"
-                      className="size-full overflow-visible"
-                    >
-                      {item.engine === "bezier" && item.points ? (
-                        <>
-                          <path
-                            d={`M 2 18 C ${(2 + item.points[0] * 32).toFixed(1)} ${(18 - item.points[1] * 16).toFixed(1)}, ${(2 + item.points[2] * 32).toFixed(1)} ${(18 - item.points[3] * 16).toFixed(1)}, 34 2`}
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            className={
-                              isActive
-                                ? "text-foreground"
-                                : "text-muted-foreground"
-                            }
-                          />
-                        </>
-                      ) : (
-                        <path
-                          d="M 2 18 Q 8 2, 14 10 T 24 4 T 34 2"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          className={
-                            isActive
-                              ? "text-foreground"
-                              : "text-muted-foreground"
-                          }
-                        />
-                      )}
-                    </svg>
-                  </div>
+                  Bezier ({BEZIER_PRESETS.length})
                 </button>
-              )
-            })}
-          </div>
-
-          {/* Block Status Indicator */}
-          <div className="flex shrink-0 items-center justify-between pt-1 font-mono text-[9px] text-muted-foreground">
-            <span>{filteredPresets.length} curves ready</span>
-            <span className="font-medium text-foreground">
-              Press 1-9 to audition
-            </span>
-          </div>
-        </section>
-
-        {/* BLOCK 3: SPONSOR & ECOSYSTEM RAIL (HUG CONTENT · 2 VERTICAL TIERS) */}
-        <footer
-          aria-label="Block 3: Sponsor and Platform Rail"
-          className="flex shrink-0 flex-col gap-2 rounded-[20px] bg-background p-3 transition-colors"
-        >
-          {/* Tier 1: Sponsor / Partner Ecosystem Showcase */}
-          <a
-            href="https://satisium.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-center justify-between rounded-[12px] bg-muted p-2 transition-colors hover:bg-secondary"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-foreground text-background">
-                <SatisiumLogo size="12" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveEngine("spring")
+                    setActivePresetId("spring-standard")
+                  }}
+                  className={cn(
+                    "h-full flex-1 cursor-pointer rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
+                    activeEngine === "spring"
+                      ? "bg-background text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Spring ({SPRING_PRESETS.length})
+                </button>
               </div>
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate font-heading text-[11px] font-semibold text-foreground">
-                  Satisium Design
+
+              {/* Flush Search Bar */}
+              <div className="relative flex h-7 w-full shrink-0 items-center">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  className="pointer-events-none absolute left-2 size-3.5 text-muted-foreground"
+                />
+                <input
+                  type="text"
+                  placeholder="Search curves..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-7 w-full rounded-[8px] bg-muted pr-7 pl-7 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 cursor-pointer text-muted-foreground hover:text-foreground"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 3. LIBRARY HEADER + 1-LINE DYNAMIC READOUT DOCK */}
+            <div className="mt-2.5 flex h-5 shrink-0 items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="font-heading text-xs font-semibold text-foreground">
+                  Library
                 </span>
-                <span className="truncate font-sans text-[10px] text-muted-foreground">
-                  The UI Architecture System
+                <span className="font-sans text-[11px] font-normal text-muted-foreground">
+                  ({filteredSystemPresets.length})
+                </span>
+              </div>
+
+              {/* Fixed 1-Line Readout Dock */}
+              <div className="max-w-[155px] min-w-0 truncate text-right">
+                {hoveredCurveMeta ? (
+                  <span className="font-sans text-[11px] font-medium text-foreground transition-all">
+                    {hoveredCurveMeta.name}
+                  </span>
+                ) : (
+                  <span className="font-sans text-[11px] text-muted-foreground transition-all">
+                    {activePresetMeta.name}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* 4. SCROLLABLE LIBRARY GRID WITH PROGRESSIVE BLUR VIGNETTES */}
+            <div className="relative mt-1.5 flex min-h-0 flex-1 flex-col overflow-hidden">
+              {/* Top Progressive Blur Vignette */}
+              <div
+                aria-hidden="true"
+                className={cn(
+                  "progressive-blur-top pointer-events-none absolute top-0 right-0 left-0 z-20 h-6 transition-opacity duration-300 select-none",
+                  isScrolledTop ? "opacity-100" : "opacity-0"
+                )}
+              />
+
+              {/* Scrollable Container (Zero Scrollbar) */}
+              <div
+                ref={scrollRef}
+                onScroll={checkScroll}
+                className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-0.5 pb-2"
+              >
+                <div className="grid grid-cols-3 gap-1.5">
+                  {filteredSystemPresets.map((item) => {
+                    const isActive = activePresetId === item.id
+                    return (
+                      <div
+                        key={item.id}
+                        className="group relative flex w-full flex-col"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActivePresetId(item.id)
+                            setActiveEngine(activeEngine)
+                          }}
+                          onDoubleClick={() =>
+                            setNavStack({ level: 1, curveId: item.id })
+                          }
+                          onMouseEnter={() =>
+                            setHoveredCurveMeta({
+                              name: item.label,
+                              duration: activeEngine === "bezier" ? 350 : 450,
+                              archetype: getPresetCategory(
+                                item.id,
+                                activeEngine
+                              ),
+                            })
+                          }
+                          onMouseLeave={() => setHoveredCurveMeta(null)}
+                          title={`${item.label} · Click to audition · Double-click to open slide`}
+                          className={cn(
+                            "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
+                            isActive
+                              ? "bg-foreground text-background"
+                              : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          )}
+                        >
+                          {/* Inner Mini Graph Box (Screen) */}
+                          <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
+                            <MiniGraph
+                              mode={activeEngine}
+                              bezier={
+                                activeEngine === "bezier"
+                                  ? (item.value as BezierConfig)
+                                  : undefined
+                              }
+                              spring={
+                                activeEngine === "spring"
+                                  ? (item.value as SpringConfig)
+                                  : undefined
+                              }
+                              className={cn(
+                                "h-full w-full stroke-2 transition-colors",
+                                isActive
+                                  ? "stroke-foreground"
+                                  : "stroke-muted-foreground group-hover:stroke-foreground"
+                              )}
+                            />
+                          </div>
+
+                          {/* Grounded Name Strip in Outer Box */}
+                          <div className="flex h-4.5 w-full items-center justify-center px-0.5">
+                            <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                              {item.label}
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Quick Inspect Button on Hover (Top-Right of Inner Box) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setNavStack({ level: 1, curveId: item.id })
+                          }}
+                          title={`Open ${item.label} slide`}
+                          className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                        >
+                          <HugeiconsIcon
+                            icon={ArrowUpRight01Icon}
+                            className="size-2.5"
+                          />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Bottom Progressive Blur Vignette */}
+              <div
+                aria-hidden="true"
+                className={cn(
+                  "progressive-blur-bottom pointer-events-none absolute right-0 bottom-0 left-0 z-20 h-8 transition-opacity duration-300 select-none",
+                  isScrolledBottom ? "opacity-100" : "opacity-0"
+                )}
+              />
+            </div>
+          </section>
+
+          {/* LEVEL 1: EASE STUDIO BLOCK (THE PHYSICAL MONOLITHIC SLAB) */}
+          <section
+            aria-label="Block 02: Ease Studio"
+            className={cn(
+              "absolute inset-0 flex flex-col justify-between rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
+              navStack.level === 1
+                ? "pointer-events-auto translate-x-0"
+                : navStack.level === 0
+                  ? "pointer-events-none translate-x-[calc(100%+8px)]"
+                  : "pointer-events-none -translate-x-[calc(100%+8px)]"
+            )}
+          >
+            {activeDossier && (
+              <div className="flex h-full flex-col justify-between">
+                {/* TOP & MIDDLE: MINIMALIST ESSENTIAL DOSSIER */}
+                <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-0.5">
+                  {/* Top Navigation Bar */}
+                  <div className="flex shrink-0 items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setNavStack({ level: 0 })}
+                      className="group flex cursor-pointer items-center gap-1.5 rounded-[8px] bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                    >
+                      <HugeiconsIcon
+                        icon={ArrowLeft01Icon}
+                        className="size-3.5 transition-transform group-hover:-translate-x-0.5"
+                      />
+                      <span className="font-heading">Library</span>
+                    </button>
+                    <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                      {activeDossier.duration}ms
+                    </span>
+                  </div>
+
+                  {/* Title & Origin Pedigree */}
+                  <div className="flex shrink-0 flex-col gap-1">
+                    <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
+                      {activeDossier.name}
+                    </h3>
+                    <span className="font-sans text-[11px] text-muted-foreground">
+                      {activeDossier.origin} ·{" "}
+                      {activeDossier.engine === "bezier"
+                        ? "Cubic Bezier"
+                        : "Physical Spring"}
+                    </span>
+                  </div>
+
+                  {/* The Single Definitive Kinetic Law (Hero Statement) */}
+                  <p className="font-sans text-xs leading-[1.5] text-foreground">
+                    &ldquo;{activeDossier.kinetics.choreographyLaw}&rdquo;
+                  </p>
+
+                  {/* Best For (Habitats) */}
+                  {activeDossier.useCases &&
+                    activeDossier.useCases.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                          Best For
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {activeDossier.useCases.map((uc) => (
+                            <span
+                              key={uc}
+                              className="rounded-[6px] bg-muted px-2 py-0.5 font-sans text-[10px] font-medium text-foreground"
+                            >
+                              {uc}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* 2-Column Telemetry Row (Timing Sweet Spot & Specification) */}
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    {/* Timing Sweet Spot */}
+                    <div className="flex flex-col gap-1">
+                      <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                        Sweet Spot
+                      </span>
+                      <span className="font-sans text-[11px] font-medium text-foreground">
+                        {activeDossier.kinetics.timingSweetSpot}
+                      </span>
+                    </div>
+
+                    {/* Specification (Formula Coordinates) */}
+                    <div className="flex flex-col gap-1">
+                      <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                        Spec
+                      </span>
+                      <span className="truncate rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-foreground">
+                        {activeDossier.values}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BOTTOM TRAY: ACCESSIBLE 2-COLUMN VARIANTS GRID OR FORK PRESET */}
+                {activeDossier.isCustom ? (
+                  <div className="flex shrink-0 flex-col gap-1.5 pt-2">
+                    <div className="flex items-center justify-between px-0.5">
+                      <span className="font-heading text-xs font-semibold text-foreground">
+                        Variants
+                      </span>
+                      <span className="rounded-[6px] bg-secondary px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
+                        {activeDossier.variants?.length ?? 0}
+                      </span>
+                    </div>
+
+                    <div className="no-scrollbar grid max-h-[140px] grid-cols-2 gap-1.5 overflow-y-auto pt-0.5">
+                      {(activeDossier.variants ?? []).map((v) => {
+                        const isSelected = activePresetId === v.id
+                        const subVariantCount = v.variants?.length ?? 0
+
+                        return (
+                          <div key={v.id} className="group relative w-full">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // CLICK ONLY SELECTS / AUDITIONS IT (DOES NOT CHANGE CURRENT DOSSIER)
+                                setActivePresetId(v.id)
+                                setActiveEngine(v.engine)
+                              }}
+                              onDoubleClick={() => {
+                                // DOUBLE CLICK OPENS SLIDE WITH INFO REGARDING THIS VARIANT
+                                setNavStack({
+                                  level: 2,
+                                  curveId: activeDossier.id,
+                                  variantId: v.id,
+                                })
+                              }}
+                              title={`${v.name} · Click to audition · Double-click to open slide`}
+                              className={cn(
+                                "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
+                                isSelected
+                                  ? "bg-foreground text-background"
+                                  : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+                              )}
+                            >
+                              {/* Inner Mini Graph Box */}
+                              <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
+                                {subVariantCount > 0 && (
+                                  <span className="pointer-events-none absolute top-1 left-1.5 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
+                                    +{subVariantCount}
+                                  </span>
+                                )}
+
+                                <MiniGraph
+                                  mode={v.engine}
+                                  bezier={v.bezier}
+                                  spring={v.spring}
+                                  className={cn(
+                                    "h-full w-full stroke-2 transition-colors",
+                                    isSelected
+                                      ? "stroke-foreground"
+                                      : "stroke-muted-foreground group-hover:stroke-foreground"
+                                  )}
+                                />
+                              </div>
+
+                              {/* Grounded Name Strip in Outer Box */}
+                              <div className="flex h-4.5 w-full items-center justify-center px-0.5">
+                                <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                                  {v.name}
+                                </span>
+                              </div>
+                            </button>
+
+                            {/* Quick open button on hover (Top-Right of Inner Box) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setNavStack({
+                                  level: 2,
+                                  curveId: activeDossier.id,
+                                  variantId: v.id,
+                                })
+                              }}
+                              title={`Open ${v.name} slide`}
+                              className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                            >
+                              <HugeiconsIcon
+                                icon={ArrowUpRight01Icon}
+                                className="size-2.5"
+                              />
+                            </button>
+                          </div>
+                        )
+                      })}
+
+                      {/* Action Tile: + Add Variant */}
+                      <button
+                        type="button"
+                        onClick={handleAddVariant}
+                        title="Add variant"
+                        className="group flex w-full cursor-pointer flex-col items-center rounded-[10px] bg-muted p-0.5 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                      >
+                        <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-[8px] bg-background p-1">
+                          <HugeiconsIcon
+                            icon={PlusSignIcon}
+                            className="size-3.5 text-muted-foreground group-hover:text-foreground"
+                          />
+                        </div>
+                        <div className="flex h-4.5 w-full items-center justify-center px-0.5">
+                          <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                            Add Variant
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex shrink-0 flex-col pt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleForkPreset(activeDossier.id)}
+                      className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
+                    >
+                      <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+                      <span>Fork to Custom Preset</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* LEVEL 2: VARIANT TUNING BLOCK (THE PHYSICAL MONOLITHIC SLAB) */}
+          <section
+            aria-label="Block 02: Variant Tuning"
+            className={cn(
+              "absolute inset-0 flex flex-col justify-between rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
+              navStack.level === 2
+                ? "pointer-events-auto translate-x-0"
+                : "pointer-events-none translate-x-[calc(100%+8px)]"
+            )}
+          >
+            {currentCurve && currentVariant && (
+              <div className="flex h-full flex-col justify-between">
+                {/* TOP & MIDDLE: MINIMALIST ESSENTIAL VARIANT DOSSIER */}
+                <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-0.5">
+                  {/* Top Navigation */}
+                  <div className="flex shrink-0 items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNavStack({ level: 1, curveId: currentCurve.id })
+                      }
+                      className="group flex cursor-pointer items-center gap-1.5 rounded-[8px] bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                    >
+                      <HugeiconsIcon
+                        icon={ArrowLeft01Icon}
+                        className="size-3.5 transition-transform group-hover:-translate-x-0.5"
+                      />
+                      <span className="font-heading">{currentCurve.name}</span>
+                    </button>
+                    <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                      {currentVariant.duration}ms
+                    </span>
+                  </div>
+
+                  {/* Title & Origin Pedigree */}
+                  <div className="flex shrink-0 flex-col gap-1">
+                    <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
+                      {currentVariant.name}
+                    </h3>
+                    <span className="font-sans text-[11px] text-muted-foreground">
+                      Branch of {currentCurve.name} · Kinetic Variant
+                    </span>
+                  </div>
+
+                  {/* Variant Description */}
+                  {currentVariant.desc && (
+                    <p className="font-sans text-xs leading-[1.5] text-foreground">
+                      {currentVariant.desc}
+                    </p>
+                  )}
+
+                  {/* Specification (Formula Coordinates) */}
+                  <div className="flex flex-col gap-1 pt-0.5">
+                    <span className="font-sans text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
+                      Spec
+                    </span>
+                    <span className="truncate rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-foreground">
+                      {currentVariant.values}
+                    </span>
+                  </div>
+                </div>
+
+                {/* BOTTOM TRAY: 2-COLUMN ACCESSIBLE FLAVORS GRID */}
+                <div className="flex shrink-0 flex-col gap-1.5 pt-2">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="font-heading text-xs font-semibold text-foreground">
+                      Flavors
+                    </span>
+                    <span className="rounded-[6px] bg-secondary px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
+                      {currentVariant.variants?.length ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="no-scrollbar grid max-h-[140px] grid-cols-2 gap-1.5 overflow-y-auto pt-0.5">
+                    {(currentVariant.variants ?? []).map((sv) => {
+                      const isSelected = activePresetId === sv.id
+                      return (
+                        <div key={sv.id} className="group relative w-full">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // CLICK ONLY AUDITIONS IT (DOES NOT MUTATE CURRENT VARIANT DOSSIER)
+                              setActivePresetId(sv.id)
+                              setActiveEngine(sv.engine)
+                            }}
+                            title={`${sv.name} · Click to audition`}
+                            className={cn(
+                              "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
+                              isSelected
+                                ? "bg-foreground text-background"
+                                : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            )}
+                          >
+                            <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
+                              <MiniGraph
+                                mode={sv.engine}
+                                bezier={sv.bezier}
+                                spring={sv.spring}
+                                className={cn(
+                                  "h-full w-full stroke-2 transition-colors",
+                                  isSelected
+                                    ? "stroke-foreground"
+                                    : "stroke-muted-foreground group-hover:stroke-foreground"
+                                )}
+                              />
+                            </div>
+                            <div className="flex h-4.5 w-full items-center justify-center px-0.5">
+                              <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                                {sv.name}
+                              </span>
+                            </div>
+                          </button>
+                        </div>
+                      )
+                    })}
+
+                    {/* Action Tile: + Add Flavor */}
+                    <button
+                      type="button"
+                      onClick={handleAddFlavor}
+                      title="Add flavor"
+                      className="group flex w-full cursor-pointer flex-col items-center rounded-[10px] bg-muted p-0.5 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                    >
+                      <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-[8px] bg-background p-1">
+                        <HugeiconsIcon
+                          icon={PlusSignIcon}
+                          className="size-3.5 text-muted-foreground group-hover:text-foreground"
+                        />
+                      </div>
+                      <div className="flex h-4.5 w-full items-center justify-center px-0.5">
+                        <span className="truncate font-sans text-[10px] leading-none font-medium tracking-tight">
+                          Add Flavor
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      </aside>
+
+      {/* =====================================================================
+          CENTER STAGE: Flex-1 Full-Height Hero Canvas & Controls (Blocks 4, 5, 6)
+          ===================================================================== */}
+      <main className="flex min-w-0 flex-1 flex-col gap-2">
+        {/* BLOCK 4: REAL-WORLD COMPONENT AUDITION CANVAS */}
+        <section
+          aria-label="Block 4: Real-World Component Audition Canvas"
+          className="relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-[20px] bg-background p-6 transition-colors"
+        >
+          {/* Top Identifier & Customize Hook */}
+          <div className="z-10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                Block 04 · Center Stage
+              </span>
+              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[10px] text-muted-foreground">
+                100% Full-Height Canvas
+              </span>
+            </div>
+
+            {/* Crucial Stage 2 Transition Hook */}
+            <div className="flex items-center gap-2">
+              <span className="font-sans text-[11px] text-muted-foreground">
+                Press [2] or click:
+              </span>
+              <div className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-foreground px-3.5 py-1.5 font-heading text-xs font-semibold text-background transition-transform active:scale-95">
+                <span>Customize Curve</span>
+                <span className="font-sans text-[11px]">↗</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Central Spatial Schematic: Real-World UI Archetype Active Stage */}
+          <div className="z-10 mx-auto my-auto flex max-w-lg flex-col items-center justify-center text-center">
+            <div className="mb-4 flex size-14 items-center justify-center rounded-[16px] bg-secondary font-heading text-sm font-semibold text-foreground">
+              UI
+            </div>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Real-World Component Stage
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Audition active easing curves in full-fidelity on production UI
+              archetypes with zero mathematical intimidation.
+            </p>
+
+            {/* Archetype Wireframe Preview Footprint (Modal / Carousel / Sheet) */}
+            <div className="mt-6 flex w-full max-w-md flex-col gap-3 rounded-[16px] bg-muted p-5 text-left">
+              <div className="flex items-center justify-between">
+                <span className="font-sans text-[11px] font-semibold text-foreground">
+                  Active Archetype: Modal Dialog
+                </span>
+                <span className="rounded-[6px] bg-background px-2 py-0.5 font-sans text-[10px] font-medium text-foreground">
+                  {activePresetMeta.name}
+                </span>
+              </div>
+
+              {isGhostMode ? (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="flex h-16 w-full flex-col items-center justify-center rounded-[10px] bg-foreground p-2 text-center text-background">
+                    <span className="w-full truncate font-heading text-xs font-semibold">
+                      Base (A): {activePresetMeta.name}
+                    </span>
+                    <span className="font-sans text-[10px] opacity-75">
+                      {activePresetMeta.duration}ms
+                    </span>
+                  </div>
+                  <div className="flex h-16 w-full flex-col items-center justify-center rounded-[10px] bg-secondary p-2 text-center text-foreground">
+                    <span className="w-full truncate font-heading text-xs font-semibold">
+                      Ghost (B): {compareSlotB.name}
+                    </span>
+                    <span className="font-sans text-[10px] text-muted-foreground">
+                      {compareSlotB.duration}ms
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-16 w-full items-center justify-center rounded-[10px] bg-background text-xs font-medium text-muted-foreground">
+                  [ Interactive Component Sandbox Mounts Here ]
+                </div>
+              )}
+
+              <div className="flex items-center justify-between font-sans text-[10px] text-muted-foreground">
+                <span>Travel: Scale 0.92 → 1.0 + Fade</span>
+                <span>
+                  {isGhostMode
+                    ? `Compare: ${activePresetMeta.duration}ms vs ${compareSlotB.duration}ms`
+                    : `Settle: ${activePresetMeta.duration}ms`}
                 </span>
               </div>
             </div>
-            <HugeiconsIcon
-              icon={ArrowUpRight01Icon}
-              className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
-            />
-          </a>
+          </div>
 
-          {/* Tier 2: External Links & Pedigree Strip */}
-          <div className="flex items-center justify-between px-1 font-mono text-[10px] text-muted-foreground">
+          {/* Bottom Stage Blueprint Baseline */}
+          <div className="z-10 flex items-center justify-between pt-2 font-sans text-[10px] text-muted-foreground">
+            <span>Reaches Viewport Top Edge (Zero Global Header Penalty)</span>
+            <span>Uninterrupted Spatial Focus</span>
+          </div>
+        </section>
+
+        {/* CENTER BOTTOM TOOLBAR ROW (Blocks 5 & 6) */}
+        <div className="flex h-11 shrink-0 gap-2">
+          {/* BLOCK 5: SCALABLE COMPONENT SELECTOR (220px Fixed) */}
+          <section
+            aria-label="Block 5: Component Selector"
+            className="flex w-[220px] shrink-0 items-center justify-between rounded-[16px] bg-background px-3.5 transition-colors"
+          >
+            <div className="flex flex-col">
+              <span className="font-sans text-[10px] font-medium text-muted-foreground">
+                Block 05 · Selector
+              </span>
+              <span className="font-heading text-xs font-semibold text-foreground">
+                Modal Dialog ▼
+              </span>
+            </div>
+            <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[10px] text-muted-foreground">
+              20+ Archetypes
+            </span>
+          </section>
+
+          {/* BLOCK 6: PLAYBACK TRANSPORT, SCRUBBER & A11Y */}
+          <section
+            aria-label="Block 6: Transport, Scrubber and Accessibility"
+            className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-[16px] bg-background px-3.5 transition-colors"
+          >
+            {/* Play/Trigger */}
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 items-center gap-1.5 rounded-[8px] bg-foreground px-2.5 font-heading text-xs font-medium text-background">
+                <span>Play</span>
+                <kbd className="font-mono text-[9px] opacity-75">Space</kbd>
+              </div>
+              <div className="flex h-7 items-center rounded-[8px] bg-secondary px-2 font-sans text-[11px] text-muted-foreground">
+                Loop
+              </div>
+            </div>
+
+            {/* Speed & Scrubber Footprint */}
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex h-7 items-center rounded-[8px] bg-secondary p-0.5">
+                {["1x", "0.5x", "0.25x"].map((speed, i) => (
+                  <span
+                    key={speed}
+                    className={cn(
+                      "rounded-[6px] px-2 py-0.5 font-sans text-[10px]",
+                      i === 0
+                        ? "bg-background font-medium text-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {speed}
+                  </span>
+                ))}
+              </div>
+
+              {/* Scrubber Track Footprint */}
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="font-sans text-[10px] text-muted-foreground">
+                  0%
+                </span>
+                <div className="relative h-2 min-w-0 flex-1 rounded-full bg-secondary">
+                  <div className="absolute top-1/2 left-[38%] size-3 -translate-y-1/2 rounded-full bg-foreground" />
+                </div>
+                <span className="font-sans text-[10px] text-muted-foreground">
+                  100%
+                </span>
+              </div>
+            </div>
+
+            {/* Reduced Motion A11y Toggle */}
+            <div className="flex h-7 items-center gap-1.5 rounded-[8px] bg-secondary px-2.5 font-sans text-[10px] text-muted-foreground">
+              <span>Reduced Motion</span>
+              <div className="size-2 rounded-full bg-muted-foreground" />
+            </div>
+          </section>
+        </div>
+      </main>
+
+      {/* =====================================================================
+          RIGHT FLANK: 300px Fixed Width (Blocks 7 & 8)
+          ===================================================================== */}
+      <aside className="flex w-[300px] shrink-0 flex-col gap-2">
+        {/* BLOCK 7: PRODUCTION EXPORT SLAB (AIRY & DEDICATED) */}
+        <section
+          aria-label="Block 7: Production Export Slab"
+          className="no-scrollbar flex min-h-0 flex-1 flex-col justify-between overflow-y-auto rounded-[20px] bg-background p-3.5 transition-colors"
+        >
+          {/* Header */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                Block 07 · Production Export
+              </span>
+              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[10px] text-muted-foreground">
+                300px
+              </span>
+            </div>
+            <h2 className="font-heading text-sm font-semibold text-foreground">
+              Production Export
+            </h2>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              First-class multi-framework handoff with token fidelity.
+            </p>
+          </div>
+
+          {/* Central Export Deck */}
+          <div className="my-auto flex flex-col gap-3 py-2">
+            <div className="flex flex-col gap-2.5 rounded-[14px] bg-secondary p-3">
+              {/* Framework Switcher Tabs */}
+              <div className="flex h-8 w-full items-center justify-between rounded-[8px] bg-background p-1">
+                {(["CSS", "Tailwind", "Motion", "SwiftUI"] as const).map(
+                  (fw) => (
+                    <button
+                      key={fw}
+                      type="button"
+                      onClick={() => setExportFramework(fw)}
+                      className={cn(
+                        "flex-1 cursor-pointer rounded-[6px] py-0.5 text-center font-heading text-[11px] font-medium transition-colors",
+                        exportFramework === fw
+                          ? "bg-foreground font-semibold text-background"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {fw}
+                    </button>
+                  )
+                )}
+              </div>
+
+              {/* High-Contrast Neutral Copy Action */}
+              <button
+                type="button"
+                onClick={handleCopyToken}
+                className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
+              >
+                <span>
+                  {hasCopiedToken ? "Copied to Clipboard!" : "Copy Ease Token"}
+                </span>
+                <kbd className="rounded-[4px] bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
+                  ⌘C
+                </kbd>
+              </button>
+
+              {/* Code Snippet Output Box */}
+              <div className="flex flex-col gap-1.5 rounded-[8px] bg-background p-2.5">
+                <div className="flex items-center justify-between font-sans text-[10px] text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {exportFramework} Output
+                  </span>
+                  <span className="max-w-[130px] truncate text-right">
+                    {activePresetMeta.name}
+                  </span>
+                </div>
+                <code className="font-mono text-[10px] leading-tight break-all whitespace-pre-wrap text-foreground">
+                  {getExportSnippet()}
+                </code>
+              </div>
+            </div>
+
+            {/* Quick Settle Specs Readout */}
+            <div className="flex items-center justify-between rounded-[10px] bg-muted px-3 py-2 font-sans text-[11px]">
+              <span className="text-muted-foreground">Settle duration:</span>
+              <span className="font-semibold text-foreground">
+                {activePresetMeta.duration}ms
+              </span>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-1 font-sans text-[10px] text-muted-foreground">
+            <span>Omnipresent Across Stages</span>
+            <span>Zero-Friction Handoff</span>
+          </div>
+        </section>
+
+        {/* BLOCK 8: DEDICATED COMPARE BENCH */}
+        <section
+          aria-label="Block 8: Compare Bench"
+          className="flex shrink-0 flex-col gap-2.5 rounded-[18px] bg-background p-3.5 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="font-sans text-[10px] font-semibold text-muted-foreground">
+                Block 08
+              </span>
+              <span className="font-heading text-xs font-semibold text-foreground">
+                Compare Bench
+              </span>
+            </div>
+            <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[10px] text-muted-foreground">
+              A/B Staged
+            </span>
+          </div>
+
+          {/* Staging Slots */}
+          <div className="flex flex-col gap-1.5">
+            {/* Slot A: Active Base */}
+            <div className="flex items-center justify-between rounded-[8px] bg-muted px-2.5 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="rounded-[4px] bg-foreground px-1.5 py-0.5 font-sans text-[9px] font-bold text-background">
+                  A
+                </span>
+                <span className="truncate font-heading text-xs font-medium text-foreground">
+                  {activePresetMeta.name}
+                </span>
+              </div>
+              <span className="shrink-0 font-sans text-[10px] text-muted-foreground">
+                {activePresetMeta.duration}ms
+              </span>
+            </div>
+
+            {/* Slot B: Challenger */}
+            <div className="flex items-center justify-between rounded-[8px] bg-muted px-2.5 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="rounded-[4px] bg-secondary px-1.5 py-0.5 font-sans text-[9px] font-bold text-foreground">
+                  B
+                </span>
+                <span className="truncate font-heading text-xs font-medium text-foreground">
+                  {compareSlotB.name}
+                </span>
+              </div>
+              <span className="shrink-0 font-sans text-[10px] text-muted-foreground">
+                {compareSlotB.duration}ms
+              </span>
+            </div>
+          </div>
+
+          {/* Delta Telemetry Readout */}
+          <div className="flex items-center justify-between rounded-[8px] bg-secondary px-2.5 py-1.5 font-sans text-[10px]">
+            <span className="text-muted-foreground">
+              Duration Delta (B − A)
+            </span>
+            <span className="font-semibold text-foreground">
+              {compareSlotB.duration - activePresetMeta.duration >= 0
+                ? `+${compareSlotB.duration - activePresetMeta.duration}ms`
+                : `${compareSlotB.duration - activePresetMeta.duration}ms`}
+            </span>
+          </div>
+
+          {/* Actions: Ghost Audition & Pin Current */}
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <button
+              type="button"
+              onClick={() => setIsGhostMode(!isGhostMode)}
+              className={cn(
+                "flex h-7 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[8px] font-heading text-xs font-medium transition-colors",
+                isGhostMode
+                  ? "bg-foreground font-semibold text-background"
+                  : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+              )}
+            >
+              <HugeiconsIcon icon={Layers01Icon} className="size-3" />
+              <span>{isGhostMode ? "Ghost: On" : "Ghost: Off"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCompareSlotB({
+                  id: activePresetId,
+                  name: activePresetMeta.name,
+                  duration: activePresetMeta.duration,
+                  engine: activePresetMeta.engine,
+                  values: activePresetMeta.values,
+                  bezier: activePresetMeta.bezier,
+                  spring: activePresetMeta.spring,
+                })
+              }}
+              title="Pin currently auditioned curve to Slot B"
+              className="flex h-7 cursor-pointer items-center justify-center rounded-[8px] bg-muted px-2.5 font-sans text-[11px] font-medium text-foreground transition-colors hover:bg-secondary"
+            >
+              Pin to B
+            </button>
+          </div>
+
+          {/* Integrated Platform Footnote */}
+          <div className="flex items-center justify-between pt-1 font-sans text-[10px] text-muted-foreground">
             <a
               href="https://satisium.com"
               target="_blank"
@@ -410,9 +1876,7 @@ export function Stage1Audition() {
               >
                 Twitter
               </a>
-              <span className="font-mono text-[9px] text-muted-foreground">
-                ·
-              </span>
+              <span className="text-[10px] text-muted-foreground">·</span>
               <a
                 href="https://github.com/satisium"
                 target="_blank"
@@ -421,320 +1885,6 @@ export function Stage1Audition() {
               >
                 GitHub
               </a>
-            </div>
-          </div>
-        </footer>
-      </aside>
-
-      {/* =====================================================================
-          CENTER STAGE: Flex-1 Full-Height Hero Canvas & Controls (Blocks 4, 5, 6)
-          ===================================================================== */}
-      <main className="flex min-w-0 flex-1 flex-col gap-2">
-        {/* BLOCK 4: REAL-WORLD COMPONENT AUDITION CANVAS */}
-        <section
-          aria-label="Block 4: Real-World Component Audition Canvas"
-          className="relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-[20px] bg-background p-6 transition-colors"
-        >
-          {/* Top Identifier & Customize Hook */}
-          <div className="z-10 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Block 04 · Center Stage
-              </span>
-              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                Flex-1 × Flex-1 (100% Full-Height Canvas)
-              </span>
-            </div>
-
-            {/* Crucial Stage 2 Transition Hook */}
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-muted-foreground">
-                Press [2] or click:
-              </span>
-              <div className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-foreground px-3.5 py-1.5 font-heading text-xs font-semibold text-background transition-transform active:scale-95">
-                <span>Customize Curve</span>
-                <span className="font-mono text-[10px]">↗</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Central Spatial Schematic: Real-World UI Archetype Active Stage */}
-          <div className="z-10 mx-auto my-auto flex max-w-lg flex-col items-center justify-center text-center">
-            <div className="mb-4 flex size-14 items-center justify-center rounded-[16px] bg-secondary font-mono text-sm font-semibold text-foreground">
-              UI
-            </div>
-            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Real-World Component Stage
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Audition active easing curves in full-fidelity on production UI
-              archetypes with zero mathematical intimidation.
-            </p>
-
-            {/* Archetype Wireframe Preview Footprint (Modal / Carousel / Sheet) */}
-            <div className="mt-6 flex w-full max-w-md flex-col gap-3 rounded-[16px] bg-muted p-5 text-left">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] font-semibold tracking-wide text-foreground uppercase">
-                  Active Archetype: Modal Dialog
-                </span>
-                <span className="rounded-[6px] bg-background px-2 py-0.5 font-mono text-[10px] font-medium text-foreground">
-                  Apple Fluid Decel
-                </span>
-              </div>
-              <div className="flex h-16 w-full items-center justify-center rounded-[10px] bg-background text-xs font-medium text-muted-foreground">
-                [ Interactive Component Sandbox Mounts Here ]
-              </div>
-              <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
-                <span>Travel: Scale 0.92 → 1.0 + Fade</span>
-                <span>Settle: 320ms</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Stage Blueprint Baseline */}
-          <div className="z-10 flex items-center justify-between pt-2 font-mono text-[10px] text-muted-foreground">
-            <span>Reaches Viewport Top Edge (Zero Global Header Penalty)</span>
-            <span>Uninterrupted Spatial Focus</span>
-          </div>
-        </section>
-
-        {/* CENTER BOTTOM TOOLBAR ROW (Blocks 5 & 6) */}
-        <div className="flex h-11 shrink-0 gap-2">
-          {/* BLOCK 5: SCALABLE COMPONENT SELECTOR (220px Fixed) */}
-          <section
-            aria-label="Block 5: Component Selector"
-            className="flex w-[220px] shrink-0 items-center justify-between rounded-[16px] bg-background px-3.5 transition-colors"
-          >
-            <div className="flex flex-col">
-              <span className="font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Block 05 · Selector
-              </span>
-              <span className="font-heading text-xs font-semibold text-foreground">
-                Modal Dialog ▼
-              </span>
-            </div>
-            <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-              20+ Archetypes
-            </span>
-          </section>
-
-          {/* BLOCK 6: PLAYBACK TRANSPORT, SCRUBBER & A11Y */}
-          <section
-            aria-label="Block 6: Transport, Scrubber and Accessibility"
-            className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-[16px] bg-background px-3.5 transition-colors"
-          >
-            {/* Play/Trigger */}
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 items-center gap-1.5 rounded-[8px] bg-foreground px-2.5 font-heading text-xs font-medium text-background">
-                <span>Play</span>
-                <kbd className="font-mono text-[9px] opacity-75">Space</kbd>
-              </div>
-              <div className="flex h-7 items-center rounded-[8px] bg-secondary px-2 font-mono text-[11px] text-muted-foreground">
-                Loop
-              </div>
-            </div>
-
-            {/* Speed & Scrubber Footprint */}
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-7 items-center rounded-[8px] bg-secondary p-0.5">
-                {["1x", "0.5x", "0.25x"].map((speed, i) => (
-                  <span
-                    key={speed}
-                    className={cn(
-                      "rounded-[6px] px-2 py-0.5 font-mono text-[10px]",
-                      i === 0
-                        ? "bg-background font-medium text-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {speed}
-                  </span>
-                ))}
-              </div>
-
-              {/* Scrubber Track Footprint */}
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  0%
-                </span>
-                <div className="relative h-2 min-w-0 flex-1 rounded-full bg-secondary">
-                  <div className="absolute top-1/2 left-[38%] size-3 -translate-y-1/2 rounded-full bg-foreground" />
-                </div>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  100%
-                </span>
-              </div>
-            </div>
-
-            {/* Reduced Motion A11y Toggle */}
-            <div className="flex h-7 items-center gap-1.5 rounded-[8px] bg-secondary px-2.5 font-mono text-[10px] text-muted-foreground">
-              <span>Reduced Motion</span>
-              <div className="size-2 rounded-full bg-muted-foreground" />
-            </div>
-          </section>
-        </div>
-      </main>
-
-      {/* =====================================================================
-          RIGHT FLANK: 300px Fixed Width (Blocks 7, 8)
-          ===================================================================== */}
-      <aside className="flex w-[300px] shrink-0 flex-col gap-2">
-        {/* BLOCK 7: PRODUCTION EXPORT & CONTEXTUAL MOTION LAW */}
-        <section
-          aria-label="Block 7: Production Export and Motion Law"
-          className="flex min-h-0 flex-1 flex-col justify-between rounded-[20px] bg-background p-4 transition-colors"
-        >
-          {/* Header */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Block 07 · Production Export
-              </span>
-              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                300px × Flex
-              </span>
-            </div>
-            <h2 className="font-heading text-sm font-semibold text-foreground">
-              Production Export & Guidance
-            </h2>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              First-class multi-framework handoff with archetype motion laws.
-            </p>
-          </div>
-
-          {/* Core Functional Blueprint */}
-          <div className="my-auto flex flex-col gap-3">
-            {/* Multi-Framework Export Deck */}
-            <div className="flex flex-col gap-2 rounded-[14px] bg-secondary p-3">
-              {/* Framework Switcher Tabs */}
-              <div className="flex h-8 w-full items-center justify-between rounded-[8px] bg-background p-1">
-                {["CSS", "Tailwind", "Motion", "GSAP"].map((fw, i) => (
-                  <div
-                    key={fw}
-                    className={cn(
-                      "flex-1 cursor-pointer rounded-[6px] py-0.5 text-center font-heading text-[11px] font-medium transition-colors",
-                      i === 0
-                        ? "bg-foreground font-semibold text-background"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {fw}
-                  </div>
-                ))}
-              </div>
-
-              {/* High-Contrast Neutral Copy Action */}
-              <button
-                type="button"
-                className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
-              >
-                <span>Copy Ease Token</span>
-                <kbd className="rounded-[4px] bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
-                  ⌘C
-                </kbd>
-              </button>
-
-              {/* Code Snippet Output Box */}
-              <div className="flex flex-col gap-1 rounded-[8px] bg-background p-2.5">
-                <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground">
-                  <span>CSS Output</span>
-                  <span>320ms Decel</span>
-                </div>
-                <code className="font-mono text-[10px] leading-tight break-all text-foreground">
-                  transition: all 320ms cubic-bezier(0.25, 1.00, 0.50, 1.00);
-                </code>
-              </div>
-            </div>
-
-            {/* Contextual Archetype Guidance (Modal Law) */}
-            <div className="flex flex-col gap-1.5 rounded-[12px] bg-muted p-2.5">
-              <span className="font-mono text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">
-                Active: Modal Motion Law
-              </span>
-              <p className="text-xs leading-snug text-foreground">
-                &ldquo;Centered modals demand swift acceleration with cushioned
-                deceleration. Never bounce &gt; 1 time in transactional
-                UI.&rdquo;
-              </p>
-              <div className="flex items-center justify-between pt-0.5 font-mono text-[9px] text-muted-foreground">
-                <span>Target Settle: 250ms – 350ms</span>
-                <span className="cursor-pointer text-foreground hover:underline">
-                  Playbook ↗
-                </span>
-              </div>
-            </div>
-
-            {/* Curated Prescriptions Stack */}
-            <div className="flex flex-col gap-1.5">
-              <span className="font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Curated Prescriptions:
-              </span>
-              {[
-                {
-                  name: "Apple Sheet Decel",
-                  desc: "Native iOS fluid glide",
-                  active: true,
-                },
-                {
-                  name: "Material 3 Emphasized",
-                  desc: "Rapid entry focus",
-                  active: false,
-                },
-                {
-                  name: "Cushioned Spring",
-                  desc: "Zero-ringing settle",
-                  active: false,
-                },
-              ].map((item) => (
-                <div
-                  key={item.name}
-                  className={cn(
-                    "flex items-center justify-between rounded-[8px] p-2 transition-colors",
-                    item.active
-                      ? "bg-secondary font-medium text-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <div className="flex flex-col">
-                    <span className="font-heading text-xs">{item.name}</span>
-                    <span className="font-mono text-[9px] text-muted-foreground">
-                      {item.desc}
-                    </span>
-                  </div>
-                  <span className="cursor-pointer font-mono text-[10px] font-medium text-foreground hover:underline">
-                    Apply
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between pt-2 font-mono text-[10px] text-muted-foreground">
-            <span>Omnipresent Across Stages</span>
-            <span>Zero-Friction Handoff</span>
-          </div>
-        </section>
-
-        {/* BLOCK 8: COMPARE BENCH STAGING */}
-        <section
-          aria-label="Block 8: Compare Bench Staging"
-          className="flex h-11 shrink-0 items-center justify-between rounded-[16px] bg-background px-3.5 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
-              Block 08
-            </span>
-            <span className="font-heading text-xs font-semibold text-foreground">
-              Compare Bench
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-              0/3 Staged
-            </span>
-            <div className="rounded-[8px] bg-foreground px-2.5 py-1 font-heading text-xs font-semibold text-background">
-              + Pin
             </div>
           </div>
         </section>
