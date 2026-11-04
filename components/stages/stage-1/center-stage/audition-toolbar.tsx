@@ -68,19 +68,16 @@ export function AuditionToolbar({
               mode: "desktop" as const,
               icon: LaptopIcon,
               label: "Desktop",
-              hotkey: "1",
             },
             {
               mode: "tablet" as const,
               icon: Tablet01Icon,
               label: "Tablet",
-              hotkey: "2",
             },
             {
               mode: "mobile" as const,
               icon: SmartPhone01Icon,
               label: "Mobile",
-              hotkey: "3",
             },
           ].map((item) => {
             const isActive = viewportMode === item.mode
@@ -113,11 +110,8 @@ export function AuditionToolbar({
                     </span>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="flex items-center gap-2">
+                <TooltipContent side="top" className="text-xs">
                   <span>{item.label} View</span>
-                  <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    {item.hotkey}
-                  </kbd>
                 </TooltipContent>
               </Tooltip>
             )

@@ -70,8 +70,13 @@ export function Stage1Audition() {
   const [isLooping, setIsLooping] = React.useState<boolean>(false)
   const [playbackSpeed, setPlaybackSpeed] = React.useState<number>(1)
   const [scrubProgress, setScrubProgress] = React.useState<number>(100)
+  const scrubProgressRef = React.useRef(scrubProgress)
+
+  React.useEffect(() => {
+    scrubProgressRef.current = scrubProgress
+  }, [scrubProgress])
   const [isScrubbing, setIsScrubbing] = React.useState<boolean>(false)
-  const [isReducedMotion] = React.useState<boolean>(false)
+  const [isReducedMotion, setIsReducedMotion] = React.useState<boolean>(false)
   const [animKey, setAnimKey] = React.useState<number>(0)
 
   // Interactive Tactile Button States
@@ -254,7 +259,13 @@ export function Stage1Audition() {
 
       if (e.key === " ") {
         e.preventDefault()
-        setIsPlaying((p) => !p)
+        setIsPlaying((p) => {
+          if (!p && scrubProgressRef.current >= 100) {
+            setAnimKey((k) => k + 1)
+            setScrubProgress(0)
+          }
+          return !p
+        })
       } else if (e.key === "r" || e.key === "R") {
         setAnimKey((k) => k + 1)
         setScrubProgress(0)
@@ -275,9 +286,13 @@ export function Stage1Audition() {
     if (!isPlaying || isScrubbing) return
 
     let animationFrameId: number
-    let startTime = performance.now()
     const totalDuration = activePresetMeta.duration / playbackSpeed
     const pauseDuration = 600
+
+    const currentProgress = scrubProgressRef.current
+    const currentElapsed =
+      currentProgress >= 100 ? 0 : (currentProgress / 100) * totalDuration
+    let startTime = performance.now() - currentElapsed
 
     const tick = (now: number) => {
       const elapsed = now - startTime
@@ -403,6 +418,8 @@ export function Stage1Audition() {
           setIsLooping={setIsLooping}
           playbackSpeed={playbackSpeed}
           setPlaybackSpeed={setPlaybackSpeed}
+          isReducedMotion={isReducedMotion}
+          setIsReducedMotion={setIsReducedMotion}
           setAnimKey={setAnimKey}
         />
       </main>
