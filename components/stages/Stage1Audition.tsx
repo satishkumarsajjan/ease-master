@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { SatisiumLogo } from "@/components/satisium-logo"
 import {
@@ -10,11 +11,35 @@ import {
   Moon02Icon,
   ArrowUpRight01Icon,
   ArrowLeft01Icon,
-  Layers01Icon,
   Search01Icon,
   Cancel01Icon,
   PlusSignIcon,
+  PlayIcon,
+  PauseIcon,
+  Refresh03Icon,
+  RepeatIcon,
+  LaptopIcon,
+  Tablet01Icon,
+  SmartPhone01Icon,
+  GitCompareIcon,
 } from "@hugeicons/core-free-icons"
+import { motion, LayoutGroup } from "motion/react"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { PreviewBackground } from "@/components/previewer/preview-background"
+import { ViewportMode } from "@/components/previewer/resizable-playground"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SiGithub } from "@icons-pack/react-simple-icons"
 import { useMounted } from "@/hooks/use-mounted"
@@ -22,6 +47,7 @@ import { CommandMenuTrigger } from "@/components/layout/command-menu"
 import { MiniGraph } from "@/components/ui/mini-graph"
 import { BEZIER_PRESETS, SPRING_PRESETS } from "@/core/presets"
 import { BezierConfig, SpringConfig } from "@/core/types"
+import { solveSpring } from "@/core/math/spring"
 import { ROUTES } from "@/lib/routes"
 import { PROJECT } from "@/lib/social-links"
 import { cn } from "@/lib/utils"
@@ -571,6 +597,56 @@ const POPULAR_PRESET_IDS = new Set<string>([
   "stiff",
 ])
 
+type ArchetypeKey = "button"
+
+interface ArchetypeScenario {
+  id: ArchetypeKey
+  name: string
+  role: string
+  description: string
+}
+
+const ARCHETYPE_SCENARIOS: ArchetypeScenario[] = [
+  {
+    id: "button",
+    name: "Button",
+    role: "Tactile Rebound",
+    description: "Clean shadcn UI button tactile press & physics rebound",
+  },
+]
+
+/**
+ * High-precision cubic-bezier solver (evaluates y for a given x/t using binary bisection).
+ */
+function solveCubicBezier(
+  p1x: number,
+  p1y: number,
+  p2x: number,
+  p2y: number,
+  t: number
+): number {
+  if (t <= 0) return 0
+  if (t >= 1) return 1
+  let low = 0
+  let high = 1
+  let tParam = t
+  for (let i = 0; i < 10; i++) {
+    const currentX =
+      3 * (1 - tParam) * (1 - tParam) * tParam * p1x +
+      3 * (1 - tParam) * tParam * tParam * p2x +
+      tParam * tParam * tParam
+    if (Math.abs(currentX - t) < 0.001) break
+    if (currentX < t) low = tParam
+    else high = tParam
+    tParam = (low + high) / 2
+  }
+  return (
+    3 * (1 - tParam) * (1 - tParam) * tParam * p1y +
+    3 * (1 - tParam) * tParam * tParam * p2y +
+    tParam * tParam * tParam
+  )
+}
+
 /**
  * ============================================================================
  * STAGE 1: THE AUDITION STAGE (PURE SPATIAL BLOCK LAYOUT)
@@ -583,6 +659,7 @@ const POPULAR_PRESET_IDS = new Set<string>([
  * ============================================================================
  */
 export function Stage1Audition() {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const mounted = useMounted()
   const [activeEngine, setActiveEngine] = React.useState<"bezier" | "spring">(
@@ -602,28 +679,61 @@ export function Stage1Audition() {
     | { level: 2; curveId: string; variantId: string }
 
   const [navStack, setNavStack] = React.useState<StackLevel>({ level: 0 })
-  const [isGhostMode, setIsGhostMode] = React.useState<boolean>(false)
+  const [activeScenarioKey, setActiveScenarioKey] =
+    React.useState<ArchetypeKey>("button")
+  const [compareQueue, setCompareQueue] = React.useState<string[]>([])
   const [exportFramework, setExportFramework] = React.useState<
     "CSS" | "Tailwind" | "Motion" | "SwiftUI"
   >("CSS")
   const [hasCopiedToken, setHasCopiedToken] = React.useState(false)
 
-  const [compareSlotB, setCompareSlotB] = React.useState<{
-    id: string
-    name: string
-    duration: number
-    engine: "bezier" | "spring"
-    values: string
-    bezier?: BezierConfig
-    spring?: SpringConfig
-  }>({
-    id: "apple-fluid-decel",
-    name: "Apple Fluid Decel",
-    duration: 350,
-    engine: "bezier",
-    values: "0.16, 1.00, 0.30, 1.00",
-    bezier: { p1: { x: 0.16, y: 1.0 }, p2: { x: 0.3, y: 1.0 } },
-  })
+  // Column 2: Center Stage Runtime States
+  const [previewWidth, setPreviewWidth] = React.useState<number | string>(
+    "100%"
+  )
+  const [viewportMode, setViewportMode] =
+    React.useState<ViewportMode>("desktop")
+  // Human-centered playback: calm at rest by default (zero fatigue)
+  const [isPlaying, setIsPlaying] = React.useState<boolean>(false)
+  const [isLooping, setIsLooping] = React.useState<boolean>(false)
+  const [playbackSpeed, setPlaybackSpeed] = React.useState<number>(1)
+  const [scrubProgress, setScrubProgress] = React.useState<number>(100)
+  const [isScrubbing, setIsScrubbing] = React.useState<boolean>(false)
+  const [lifecyclePhase, setLifecyclePhase] = React.useState<"enter" | "exit">(
+    "enter"
+  )
+  const [isReducedMotion, setIsReducedMotion] = React.useState<boolean>(false)
+  const [animKey, setAnimKey] = React.useState<number>(0)
+
+  // Interactive Tactile Button States
+  const [buttonPressed, setButtonPressed] = React.useState<boolean>(false)
+
+  const isCurrentCurveQueued = compareQueue.includes(activePresetId)
+
+  const toggleCompareQueue = React.useCallback(() => {
+    setCompareQueue((prev) => {
+      if (prev.includes(activePresetId)) {
+        return prev.filter((id) => id !== activePresetId)
+      }
+      if (prev.length >= 3) {
+        return [...prev.slice(1), activePresetId]
+      }
+      return [...prev, activePresetId]
+    })
+  }, [activePresetId])
+
+  const triggerSingleAnimation = React.useCallback(() => {
+    setScrubProgress(0)
+    setAnimKey((k) => k + 1)
+    setIsPlaying(true)
+  }, [])
+
+  const handleViewportChange = React.useCallback((mode: ViewportMode) => {
+    setViewportMode(mode)
+    if (mode === "desktop") setPreviewWidth("100%")
+    if (mode === "tablet") setPreviewWidth(768)
+    if (mode === "mobile") setPreviewWidth(375)
+  }, [])
 
   const resolveEase = React.useCallback(
     (id: string): EaseDossier | undefined => {
@@ -785,6 +895,12 @@ export function Stage1Audition() {
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement
+      const isInput =
+        activeEl?.tagName === "INPUT" ||
+        activeEl?.tagName === "TEXTAREA" ||
+        (activeEl instanceof HTMLElement && activeEl.isContentEditable)
+
       if (e.key === "Escape") {
         setNavStack((prev) => {
           if (prev.level === 2) return { level: 1, curveId: prev.curveId }
@@ -792,14 +908,30 @@ export function Stage1Audition() {
           return prev
         })
       }
+
+      if (isInput) return
+
+      if (e.key === " ") {
+        e.preventDefault()
+        setIsPlaying((p) => !p)
+      } else if (e.key === "r" || e.key === "R") {
+        setAnimKey((k) => k + 1)
+        setScrubProgress(0)
+        setIsPlaying(true)
+      } else if (e.key === "2") {
+        router.push(ROUTES.stage2)
+      } else if (e.key === "c" || e.key === "C") {
+        toggleCompareQueue()
+      }
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  }, [router, toggleCompareQueue])
 
   const handleCustomCurveClick = (curve: CustomEase) => {
     setActivePresetId(curve.id)
     setActiveEngine(curve.engine)
+    triggerSingleAnimation()
   }
 
   const handleAddVariant = () => {
@@ -1007,7 +1139,84 @@ export function Stage1Audition() {
 
   const activePresetMeta = getActivePresetMeta()
 
-  const getExportSnippet = () => {
+  const getEasedValue = React.useCallback(
+    (
+      progressPct: number,
+      meta: {
+        engine: "bezier" | "spring"
+        bezier?: BezierConfig
+        spring?: SpringConfig
+      }
+    ) => {
+      const t = Math.max(0, Math.min(1, progressPct / 100))
+      if (isReducedMotion) {
+        return t > 0.05 ? 1 : t * 20
+      }
+      if (meta.engine === "bezier" && meta.bezier) {
+        const { p1, p2 } = meta.bezier
+        return solveCubicBezier(p1.x, p1.y, p2.x, p2.y, t)
+      }
+      if (meta.engine === "spring" && meta.spring) {
+        const springRes = solveSpring(
+          meta.spring.mass,
+          meta.spring.stiffness,
+          meta.spring.damping
+        )
+        const count = springRes.points.length
+        if (count === 0) return t
+        const idx = Math.min(count - 1, Math.floor(t * (count - 1)))
+        return springRes.points[idx] ?? t
+      }
+      return t
+    },
+    [isReducedMotion]
+  )
+
+  const currentEasedA = React.useMemo(() => {
+    const raw = getEasedValue(scrubProgress, activePresetMeta)
+    return lifecyclePhase === "enter" ? raw : 1 - raw
+  }, [getEasedValue, scrubProgress, activePresetMeta, lifecyclePhase])
+
+  React.useEffect(() => {
+    if (!isPlaying || isScrubbing) return
+
+    let animationFrameId: number
+    let startTime = performance.now()
+    const totalDuration = activePresetMeta.duration / playbackSpeed
+    const pauseDuration = 600
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime
+      if (elapsed < totalDuration) {
+        setScrubProgress((elapsed / totalDuration) * 100)
+        animationFrameId = requestAnimationFrame(tick)
+      } else if (isLooping) {
+        if (elapsed < totalDuration + pauseDuration) {
+          setScrubProgress(100)
+          animationFrameId = requestAnimationFrame(tick)
+        } else {
+          startTime = performance.now()
+          setAnimKey((k) => k + 1)
+          setScrubProgress(0)
+          animationFrameId = requestAnimationFrame(tick)
+        }
+      } else {
+        setScrubProgress(100)
+        setIsPlaying(false)
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animationFrameId)
+  }, [
+    isPlaying,
+    isScrubbing,
+    isLooping,
+    playbackSpeed,
+    activePresetMeta.duration,
+  ])
+
+  const getExportSnippet = React.useCallback(() => {
     const dur = activePresetMeta.duration
     const val = activePresetMeta.values
     if (exportFramework === "CSS") {
@@ -1027,15 +1236,64 @@ export function Stage1Audition() {
       return `.animation(\n  .timingCurve(${val},\n    duration: ${(dur / 1000).toFixed(2)}\n  ),\n  value: trigger\n)`
     }
     return ""
-  }
+  }, [
+    activePresetMeta.duration,
+    activePresetMeta.values,
+    activePresetMeta.engine,
+    exportFramework,
+  ])
 
-  const handleCopyToken = () => {
+  const handleCopyToken = React.useCallback(() => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(getExportSnippet())
       setHasCopiedToken(true)
       setTimeout(() => setHasCopiedToken(false), 2000)
     }
-  }
+  }, [getExportSnippet])
+
+  const renderAuditionArchetype = React.useCallback(
+    (_scenarioKey: ArchetypeKey, eased: number) => {
+      const pressScale = buttonPressed
+        ? 0.94
+        : isReducedMotion
+          ? 1
+          : 0.94 + Math.max(-0.15, Math.min(0.2, eased * 0.06))
+
+      const pressTranslateY = buttonPressed
+        ? 2
+        : isReducedMotion
+          ? 0
+          : (1 - Math.min(1, Math.max(0, eased))) * 2
+
+      return (
+        <div className="flex h-full w-full items-center justify-center p-6 select-none">
+          <Button
+            size="default"
+            onPointerDown={() => setButtonPressed(true)}
+            onPointerUp={() => {
+              setButtonPressed(false)
+              triggerSingleAnimation()
+            }}
+            onClick={triggerSingleAnimation}
+            style={{
+              transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
+            }}
+            className="transition-transform duration-75 select-none"
+          >
+            Button
+          </Button>
+        </div>
+      )
+    },
+    [isReducedMotion, buttonPressed, triggerSingleAnimation]
+  )
+
+  const renderActivePlaygroundComponent = React.useCallback(
+    (scenarioKey: ArchetypeKey) => {
+      return renderAuditionArchetype(scenarioKey, currentEasedA)
+    },
+    [currentEasedA, renderAuditionArchetype]
+  )
 
   return (
     <div className="flex h-dvh w-full gap-2 overflow-hidden bg-muted p-2 font-sans select-none">
@@ -1418,6 +1676,7 @@ export function Stage1Audition() {
                                   onClick={() => {
                                     setActivePresetId(item.id)
                                     setActiveEngine(activeEngine)
+                                    triggerSingleAnimation()
                                   }}
                                   onDoubleClick={() =>
                                     setNavStack({ level: 1, curveId: item.id })
@@ -1880,179 +2139,469 @@ export function Stage1Audition() {
       </aside>
 
       {/* =====================================================================
-          CENTER STAGE: Flex-1 Full-Height Hero Canvas & Controls (Blocks 4, 5, 6)
+          CENTER STAGE: 70/30 Hero Canvas & Dual-Slab Workstation (Blocks 4, 5, 6)
+          ===================================================================== */}
+      {/* =====================================================================
+          CENTER STAGE: 80/20 Hero Canvas & Master Console (Blocks 4 & 6)
           ===================================================================== */}
       <main className="flex min-w-0 flex-1 flex-col gap-2">
-        {/* BLOCK 4: REAL-WORLD COMPONENT AUDITION CANVAS */}
+        {/* BLOCK 4: COMPONENT PREVIEW THEATER (TOP 80%) */}
+        <TooltipProvider delayDuration={150}>
+          <section
+            aria-label="Block 4: Component Preview Theater"
+            className="relative flex h-[80%] min-h-0 flex-col overflow-hidden rounded-[20px] bg-background p-2 transition-colors"
+          >
+            {/* Stage Container */}
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[16px]">
+              {/* Workbench Cutting-Mat Substrate */}
+              <PreviewBackground />
+
+              {/* Interactive Resizable Device Frame (Centered Horizontally & Vertically) */}
+              <motion.div
+                key={animKey}
+                initial={false}
+                animate={{ width: previewWidth }}
+                transition={{
+                  type: "spring",
+                  bounce: 0,
+                  duration: 0.4,
+                }}
+                className="relative flex h-full max-w-full items-center justify-center overflow-hidden rounded-2xl bg-muted"
+              >
+                {/* Centered Button Archetype */}
+                {renderActivePlaygroundComponent(activeScenarioKey)}
+              </motion.div>
+
+              {/* Floating Audition Toolbar (Positioned Absolutely in Bottom-Left) */}
+              <div className="absolute bottom-3 left-3 z-30 flex items-center gap-1.5 rounded-[14px] bg-background p-1 select-none">
+                {/* Viewport switcher: Desktop / Tablet / Mobile */}
+                <LayoutGroup id="audition-viewport">
+                  <div className="relative flex items-center rounded-[10px] bg-muted p-0.5">
+                    {[
+                      {
+                        mode: "desktop" as const,
+                        icon: LaptopIcon,
+                        label: "Desktop",
+                        hotkey: "1",
+                      },
+                      {
+                        mode: "tablet" as const,
+                        icon: Tablet01Icon,
+                        label: "Tablet",
+                        hotkey: "2",
+                      },
+                      {
+                        mode: "mobile" as const,
+                        icon: SmartPhone01Icon,
+                        label: "Mobile",
+                        hotkey: "3",
+                      },
+                    ].map((item) => {
+                      const isActive = viewportMode === item.mode
+                      return (
+                        <Tooltip key={item.mode}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => handleViewportChange(item.mode)}
+                              className={cn(
+                                "relative z-10 flex size-8 cursor-pointer items-center justify-center rounded-[8px] transition-colors",
+                                isActive
+                                  ? "text-foreground"
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              {isActive && (
+                                <motion.div
+                                  layoutId="audition-viewport-pill"
+                                  transition={{
+                                    type: "spring",
+                                    stiffness: 350,
+                                    damping: 30,
+                                  }}
+                                  className="absolute inset-0 rounded-[8px] bg-background"
+                                />
+                              )}
+                              <span className="relative z-20">
+                                <HugeiconsIcon
+                                  icon={item.icon}
+                                  className="size-4"
+                                />
+                              </span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            className="flex items-center gap-2"
+                          >
+                            <span>{item.label} View</span>
+                            <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+                              {item.hotkey}
+                            </kbd>
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    })}
+                  </div>
+                </LayoutGroup>
+
+                <div className="h-4 w-px bg-muted" />
+
+                {/* Component Selector Dropdown */}
+                <Select
+                  value={activeScenarioKey}
+                  onValueChange={(val) =>
+                    setActiveScenarioKey(val as ArchetypeKey)
+                  }
+                >
+                  <SelectTrigger className="h-8 w-[105px] rounded-[10px] border-none bg-muted px-2.5 text-xs font-medium text-foreground hover:bg-secondary focus:ring-0 [&>span]:truncate">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ARCHETYPE_SCENARIOS.map((scenario) => (
+                      <SelectItem
+                        key={scenario.id}
+                        value={scenario.id}
+                        className="text-xs"
+                      >
+                        {scenario.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="h-4 w-px bg-muted" />
+
+                {/* Replay Animation Action */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={triggerSingleAnimation}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-[10px] bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <HugeiconsIcon icon={Refresh03Icon} className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="flex items-center gap-2"
+                  >
+                    <span>Replay Animation</span>
+                    <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      R
+                    </kbd>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Customize in Stage 2 */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => router.push(ROUTES.stage2)}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-[10px] bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <HugeiconsIcon
+                        icon={ArrowUpRight01Icon}
+                        className="size-4"
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="flex items-center gap-2"
+                  >
+                    <span>Customize in Stage 2</span>
+                    <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      2
+                    </kbd>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Add to Compare Queue Action */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={toggleCompareQueue}
+                      className={cn(
+                        "relative flex size-8 cursor-pointer items-center justify-center rounded-[10px] transition-colors",
+                        isCurrentCurveQueued
+                          ? "bg-foreground text-background"
+                          : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <HugeiconsIcon icon={GitCompareIcon} className="size-4" />
+                      {compareQueue.length > 0 && (
+                        <span
+                          className={cn(
+                            "absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full font-mono text-[9px] font-semibold",
+                            isCurrentCurveQueued
+                              ? "bg-background text-foreground"
+                              : "bg-foreground text-background"
+                          )}
+                        >
+                          {compareQueue.length}
+                        </span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="flex items-center gap-2"
+                  >
+                    <span>
+                      {isCurrentCurveQueued
+                        ? `Queued for Compare (${compareQueue.length}/3) · Click to remove`
+                        : `Add to Compare Queue (${compareQueue.length}/3)`}
+                    </span>
+                    <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      C
+                    </kbd>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </section>
+        </TooltipProvider>
+
+        {/* BLOCK 6: UNIFIED MASTER TRANSPORT CONSOLE (BOTTOM 20%) */}
         <section
-          aria-label="Block 4: Real-World Component Audition Canvas"
-          className="relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-[20px] bg-background p-6 transition-colors"
+          aria-label="Block 6: Master Transport and Timeline Console"
+          className="flex h-[20%] min-h-0 w-full flex-col justify-between rounded-[20px] bg-background p-3.5 transition-colors"
         >
-          {/* Top Identifier & Customize Hook */}
-          <div className="z-10 flex items-center justify-between">
+          {/* Top Row: Transport Status & Keyframe Readout */}
+          <div className="flex shrink-0 items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-sans text-[11px] font-medium text-muted-foreground">
-                Block 04 · Center Stage
-              </span>
-              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[10px] text-muted-foreground">
-                100% Full-Height Canvas
-              </span>
-            </div>
-
-            {/* Crucial Stage 2 Transition Hook */}
-            <div className="flex items-center gap-2">
-              <span className="font-sans text-[11px] text-muted-foreground">
-                Press [2] or click:
-              </span>
-              <div className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-foreground px-3.5 py-1.5 font-heading text-xs font-semibold text-background transition-transform active:scale-95">
-                <span>Customize Curve</span>
-                <span className="font-sans text-[11px]">↗</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Central Spatial Schematic: Real-World UI Archetype Active Stage */}
-          <div className="z-10 mx-auto my-auto flex max-w-lg flex-col items-center justify-center text-center">
-            <div className="mb-4 flex size-14 items-center justify-center rounded-[16px] bg-secondary font-heading text-sm font-semibold text-foreground">
-              UI
-            </div>
-            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Real-World Component Stage
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Audition active easing curves in full-fidelity on production UI
-              archetypes with zero mathematical intimidation.
-            </p>
-
-            {/* Archetype Wireframe Preview Footprint (Modal / Carousel / Sheet) */}
-            <div className="mt-6 flex w-full max-w-md flex-col gap-3 rounded-[16px] bg-muted p-5 text-left">
-              <div className="flex items-center justify-between">
-                <span className="font-sans text-[11px] font-semibold text-foreground">
-                  Active Archetype: Modal Dialog
-                </span>
-                <span className="rounded-[6px] bg-background px-2 py-0.5 font-sans text-[10px] font-medium text-foreground">
-                  {activePresetMeta.name}
+              <div className="flex items-center gap-1.5 rounded-[8px] bg-muted px-2.5 py-1">
+                <span
+                  className={cn(
+                    "size-2 rounded-full",
+                    isPlaying
+                      ? "animate-pulse bg-foreground"
+                      : "bg-muted-foreground"
+                  )}
+                />
+                <span className="font-heading text-xs font-semibold text-foreground">
+                  Master Transport
                 </span>
               </div>
+              <span className="font-sans text-xs font-medium text-foreground">
+                {activePresetMeta.name}
+              </span>
+              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                {activePresetMeta.engine === "bezier"
+                  ? "Cubic Bezier"
+                  : "Physical Spring"}
+              </span>
+            </div>
 
-              {isGhostMode ? (
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="flex h-16 w-full flex-col items-center justify-center rounded-[10px] bg-foreground p-2 text-center text-background">
-                    <span className="w-full truncate font-heading text-xs font-semibold">
-                      Base (A): {activePresetMeta.name}
-                    </span>
-                    <span className="font-sans text-[10px] opacity-75">
-                      {activePresetMeta.duration}ms
-                    </span>
-                  </div>
-                  <div className="flex h-16 w-full flex-col items-center justify-center rounded-[10px] bg-secondary p-2 text-center text-foreground">
-                    <span className="w-full truncate font-heading text-xs font-semibold">
-                      Ghost (B): {compareSlotB.name}
-                    </span>
-                    <span className="font-sans text-[10px] text-muted-foreground">
-                      {compareSlotB.duration}ms
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex h-16 w-full items-center justify-center rounded-[10px] bg-background text-xs font-medium text-muted-foreground">
-                  [ Interactive Component Sandbox Mounts Here ]
-                </div>
+            <div className="flex items-center gap-3">
+              {compareQueue.length > 0 && (
+                <Link
+                  href={ROUTES.stage3}
+                  className="flex items-center gap-1.5 rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <HugeiconsIcon icon={GitCompareIcon} className="size-3" />
+                  <span>Compare Queue: {compareQueue.length}/3</span>
+                </Link>
               )}
-
-              <div className="flex items-center justify-between font-sans text-[10px] text-muted-foreground">
-                <span>Travel: Scale 0.92 → 1.0 + Fade</span>
-                <span>
-                  {isGhostMode
-                    ? `Compare: ${activePresetMeta.duration}ms vs ${compareSlotB.duration}ms`
-                    : `Settle: ${activePresetMeta.duration}ms`}
+              <div className="flex items-baseline gap-1.5 font-mono text-xs">
+                <span className="font-semibold text-foreground">
+                  {Math.round(
+                    (scrubProgress / 100) * activePresetMeta.duration
+                  )}
+                  ms
+                </span>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-muted-foreground">
+                  {activePresetMeta.duration}ms
+                </span>
+                <span className="ml-1 rounded-[6px] bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+                  {Math.round(scrubProgress)}%
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Bottom Stage Blueprint Baseline */}
-          <div className="z-10 flex items-center justify-between pt-2 font-sans text-[10px] text-muted-foreground">
-            <span>Reaches Viewport Top Edge (Zero Global Header Penalty)</span>
-            <span>Uninterrupted Spatial Focus</span>
+          {/* Middle Row: Full-Width Timeline Scrubber Runway */}
+          <div className="flex flex-col gap-1 py-0.5">
+            <div className="relative flex h-6 w-full items-center">
+              {/* Visual background track */}
+              <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+                {/* Active progress bar */}
+                <div
+                  className="h-full bg-foreground transition-none"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, scrubProgress))}%`,
+                  }}
+                />
+              </div>
+
+              {/* Floating draggable thumb */}
+              <div
+                className="pointer-events-none absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground"
+                style={{
+                  left: `${Math.max(0, Math.min(100, scrubProgress))}%`,
+                }}
+              />
+
+              {/* Accessible range input over the track */}
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={0.1}
+                value={scrubProgress}
+                onMouseDown={() => setIsScrubbing(true)}
+                onTouchStart={() => setIsScrubbing(true)}
+                onChange={(e) => {
+                  setIsScrubbing(true)
+                  setIsPlaying(false)
+                  setScrubProgress(parseFloat(e.target.value))
+                }}
+                onMouseUp={() => setIsScrubbing(false)}
+                onTouchEnd={() => setIsScrubbing(false)}
+                aria-label="Master Timeline Scrubber"
+                className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
+              />
+            </div>
+
+            {/* Keyframe tick readout */}
+            <div className="flex justify-between px-0.5 font-mono text-[9px] text-muted-foreground">
+              <span>0ms · Origin</span>
+              <span>{Math.round(activePresetMeta.duration * 0.25)}ms</span>
+              <span>
+                {Math.round(activePresetMeta.duration * 0.5)}ms · Halfway
+              </span>
+              <span>{Math.round(activePresetMeta.duration * 0.75)}ms</span>
+              <span>{activePresetMeta.duration}ms · Settle</span>
+            </div>
+          </div>
+
+          {/* Bottom Row: Master Transport Controls, Speed Multipliers & Diagnostics */}
+          <div className="flex shrink-0 items-center justify-between">
+            {/* Left: Play / Pause / Replay / Loop */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPlaying((p) => !p)}
+                className="flex h-7 cursor-pointer items-center gap-1.5 rounded-[8px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
+              >
+                <HugeiconsIcon
+                  icon={isPlaying ? PauseIcon : PlayIcon}
+                  className="size-3"
+                />
+                <span>{isPlaying ? "Pause" : "Play"}</span>
+                <kbd className="rounded-[3px] bg-background px-1 py-0.5 font-mono text-[9px] text-foreground">
+                  Space
+                </kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAnimKey((k) => k + 1)
+                  setScrubProgress(0)
+                  setIsPlaying(true)
+                }}
+                title="Replay from Origin (R)"
+                className="flex h-7 cursor-pointer items-center gap-1.5 rounded-[8px] bg-muted px-2.5 font-sans text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <HugeiconsIcon icon={Refresh03Icon} className="size-3" />
+                <span>Replay</span>
+                <kbd className="rounded-[3px] bg-secondary px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
+                  R
+                </kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsLooping((l) => !l)}
+                className={cn(
+                  "flex h-7 cursor-pointer items-center gap-1.5 rounded-[8px] px-2.5 font-sans text-xs font-medium transition-colors",
+                  isLooping
+                    ? "bg-secondary text-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <HugeiconsIcon icon={RepeatIcon} className="size-3" />
+                <span>Loop</span>
+              </button>
+            </div>
+
+            {/* Center: Velocity Multipliers */}
+            <div className="flex h-7 items-center rounded-[8px] bg-muted p-0.5 font-sans text-xs">
+              {[1, 0.5, 0.25].map((speed) => (
+                <button
+                  key={speed}
+                  type="button"
+                  onClick={() => setPlaybackSpeed(speed)}
+                  className={cn(
+                    "cursor-pointer rounded-[6px] px-2 py-0.5 text-xs transition-colors",
+                    playbackSpeed === speed
+                      ? "bg-background font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+
+            {/* Right: Direction and A11y Suite */}
+            <div className="flex items-center gap-2">
+              {/* Lifecycle Direction Toggle */}
+              <div className="flex items-center gap-0.5 rounded-[8px] bg-muted p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setLifecyclePhase("enter")}
+                  className={cn(
+                    "cursor-pointer rounded-[6px] px-2 py-0.5 font-medium transition-colors",
+                    lifecyclePhase === "enter"
+                      ? "bg-background text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Enter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLifecyclePhase("exit")}
+                  className={cn(
+                    "cursor-pointer rounded-[6px] px-2 py-0.5 font-medium transition-colors",
+                    lifecyclePhase === "exit"
+                      ? "bg-background text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Exit
+                </button>
+              </div>
+
+              {/* Reduced Motion Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsReducedMotion((m) => !m)}
+                className={cn(
+                  "flex h-7 cursor-pointer items-center gap-1.5 rounded-[8px] px-2 font-sans text-[11px] transition-colors",
+                  isReducedMotion
+                    ? "bg-secondary font-medium text-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>Reduced Motion</span>
+                <div
+                  className={cn(
+                    "size-2 rounded-full",
+                    isReducedMotion ? "bg-foreground" : "bg-muted-foreground"
+                  )}
+                />
+              </button>
+            </div>
           </div>
         </section>
-
-        {/* CENTER BOTTOM TOOLBAR ROW (Blocks 5 & 6) */}
-        <div className="flex h-11 shrink-0 gap-2">
-          {/* BLOCK 5: SCALABLE COMPONENT SELECTOR (220px Fixed) */}
-          <section
-            aria-label="Block 5: Component Selector"
-            className="flex w-[220px] shrink-0 items-center justify-between rounded-[16px] bg-background px-3.5 transition-colors"
-          >
-            <div className="flex flex-col">
-              <span className="font-sans text-[10px] font-medium text-muted-foreground">
-                Block 05 · Selector
-              </span>
-              <span className="font-heading text-xs font-semibold text-foreground">
-                Modal Dialog ▼
-              </span>
-            </div>
-            <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[10px] text-muted-foreground">
-              20+ Archetypes
-            </span>
-          </section>
-
-          {/* BLOCK 6: PLAYBACK TRANSPORT, SCRUBBER & A11Y */}
-          <section
-            aria-label="Block 6: Transport, Scrubber and Accessibility"
-            className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-[16px] bg-background px-3.5 transition-colors"
-          >
-            {/* Play/Trigger */}
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 items-center gap-1.5 rounded-[8px] bg-foreground px-2.5 font-heading text-xs font-medium text-background">
-                <span>Play</span>
-                <kbd className="font-mono text-[9px] opacity-75">Space</kbd>
-              </div>
-              <div className="flex h-7 items-center rounded-[8px] bg-secondary px-2 font-sans text-[11px] text-muted-foreground">
-                Loop
-              </div>
-            </div>
-
-            {/* Speed & Scrubber Footprint */}
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-7 items-center rounded-[8px] bg-secondary p-0.5">
-                {["1x", "0.5x", "0.25x"].map((speed, i) => (
-                  <span
-                    key={speed}
-                    className={cn(
-                      "rounded-[6px] px-2 py-0.5 font-sans text-[10px]",
-                      i === 0
-                        ? "bg-background font-medium text-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {speed}
-                  </span>
-                ))}
-              </div>
-
-              {/* Scrubber Track Footprint */}
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="font-sans text-[10px] text-muted-foreground">
-                  0%
-                </span>
-                <div className="relative h-2 min-w-0 flex-1 rounded-full bg-secondary">
-                  <div className="absolute top-1/2 left-[38%] size-3 -translate-y-1/2 rounded-full bg-foreground" />
-                </div>
-                <span className="font-sans text-[10px] text-muted-foreground">
-                  100%
-                </span>
-              </div>
-            </div>
-
-            {/* Reduced Motion A11y Toggle */}
-            <div className="flex h-7 items-center gap-1.5 rounded-[8px] bg-secondary px-2.5 font-sans text-[10px] text-muted-foreground">
-              <span>Reduced Motion</span>
-              <div className="size-2 rounded-full bg-muted-foreground" />
-            </div>
-          </section>
-        </div>
       </main>
 
       {/* =====================================================================
@@ -2152,9 +2701,9 @@ export function Stage1Audition() {
           </div>
         </section>
 
-        {/* BLOCK 8: DEDICATED COMPARE BENCH */}
+        {/* BLOCK 8: DEDICATED COMPARE QUEUE */}
         <section
-          aria-label="Block 8: Compare Bench"
+          aria-label="Block 8: Compare Queue"
           className="flex shrink-0 flex-col gap-2.5 rounded-[18px] bg-background p-3.5 transition-colors"
         >
           <div className="flex items-center justify-between">
@@ -2163,93 +2712,108 @@ export function Stage1Audition() {
                 Block 08
               </span>
               <span className="font-heading text-xs font-semibold text-foreground">
-                Compare Bench
+                Compare Queue
               </span>
             </div>
             <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[10px] text-muted-foreground">
-              A/B Staged
+              {compareQueue.length}/3 Staged
             </span>
           </div>
 
           {/* Staging Slots */}
-          <div className="flex flex-col gap-1.5">
-            {/* Slot A: Active Base */}
-            <div className="flex items-center justify-between rounded-[8px] bg-muted px-2.5 py-1.5">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="rounded-[4px] bg-foreground px-1.5 py-0.5 font-sans text-[9px] font-bold text-background">
-                  A
-                </span>
-                <span className="truncate font-heading text-xs font-medium text-foreground">
-                  {activePresetMeta.name}
-                </span>
-              </div>
-              <span className="shrink-0 font-sans text-[10px] text-muted-foreground">
-                {activePresetMeta.duration}ms
+          {compareQueue.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-[8px] bg-muted p-4 text-center">
+              <HugeiconsIcon
+                icon={GitCompareIcon}
+                className="mb-1.5 size-4 text-muted-foreground"
+              />
+              <span className="font-heading text-xs font-medium text-foreground">
+                Queue is Empty
               </span>
+              <p className="mt-1 font-sans text-[11px] text-muted-foreground">
+                Press{" "}
+                <kbd className="rounded bg-background px-1 py-0.5 font-mono text-[9px] text-foreground">
+                  C
+                </kbd>{" "}
+                or click the queue button to stage curves for the Stage 3 duel.
+              </p>
             </div>
-
-            {/* Slot B: Challenger */}
-            <div className="flex items-center justify-between rounded-[8px] bg-muted px-2.5 py-1.5">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="rounded-[4px] bg-secondary px-1.5 py-0.5 font-sans text-[9px] font-bold text-foreground">
-                  B
-                </span>
-                <span className="truncate font-heading text-xs font-medium text-foreground">
-                  {compareSlotB.name}
-                </span>
-              </div>
-              <span className="shrink-0 font-sans text-[10px] text-muted-foreground">
-                {compareSlotB.duration}ms
-              </span>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {compareQueue.map((curveId, index) => {
+                const dossier = resolveEase(curveId)
+                const name = dossier?.name ?? curveId
+                const duration = dossier?.duration ?? 300
+                const isCurrent = curveId === activePresetId
+                return (
+                  <div
+                    key={curveId}
+                    className={cn(
+                      "flex items-center justify-between rounded-[8px] px-2.5 py-1.5 transition-colors",
+                      isCurrent ? "bg-secondary" : "bg-muted"
+                    )}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex size-4 shrink-0 items-center justify-center rounded-[4px] bg-foreground font-sans text-[9px] font-bold text-background">
+                        {index + 1}
+                      </span>
+                      <span className="truncate font-heading text-xs font-medium text-foreground">
+                        {name}
+                      </span>
+                      {isCurrent && (
+                        <span className="shrink-0 rounded-[4px] bg-background px-1 py-0.5 font-sans text-[8px] text-muted-foreground">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 font-sans text-[10px] text-muted-foreground">
+                        {duration}ms
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCompareQueue((prev) =>
+                            prev.filter((id) => id !== curveId)
+                          )
+                        }
+                        className="cursor-pointer text-muted-foreground hover:text-foreground"
+                        title="Remove from queue"
+                      >
+                        <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          </div>
+          )}
 
-          {/* Delta Telemetry Readout */}
-          <div className="flex items-center justify-between rounded-[8px] bg-secondary px-2.5 py-1.5 font-sans text-[10px]">
-            <span className="text-muted-foreground">
-              Duration Delta (B − A)
-            </span>
-            <span className="font-semibold text-foreground">
-              {compareSlotB.duration - activePresetMeta.duration >= 0
-                ? `+${compareSlotB.duration - activePresetMeta.duration}ms`
-                : `${compareSlotB.duration - activePresetMeta.duration}ms`}
-            </span>
-          </div>
-
-          {/* Actions: Ghost Audition & Pin Current */}
+          {/* Actions: Queue Active Curve & Open Stage 3 */}
           <div className="flex items-center gap-1.5 pt-0.5">
             <button
               type="button"
-              onClick={() => setIsGhostMode(!isGhostMode)}
+              onClick={toggleCompareQueue}
               className={cn(
                 "flex h-7 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[8px] font-heading text-xs font-medium transition-colors",
-                isGhostMode
+                isCurrentCurveQueued
                   ? "bg-foreground font-semibold text-background"
                   : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
-              <HugeiconsIcon icon={Layers01Icon} className="size-3" />
-              <span>{isGhostMode ? "Ghost: On" : "Ghost: Off"}</span>
+              <HugeiconsIcon icon={GitCompareIcon} className="size-3" />
+              <span>
+                {isCurrentCurveQueued ? "Queued (C)" : "Queue Current (C)"}
+              </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCompareSlotB({
-                  id: activePresetId,
-                  name: activePresetMeta.name,
-                  duration: activePresetMeta.duration,
-                  engine: activePresetMeta.engine,
-                  values: activePresetMeta.values,
-                  bezier: activePresetMeta.bezier,
-                  spring: activePresetMeta.spring,
-                })
-              }}
-              title="Pin currently auditioned curve to Slot B"
-              className="flex h-7 cursor-pointer items-center justify-center rounded-[8px] bg-muted px-2.5 font-sans text-[11px] font-medium text-foreground transition-colors hover:bg-secondary"
+            <Link
+              href={ROUTES.stage3}
+              className="flex h-7 cursor-pointer items-center justify-center gap-1 rounded-[8px] bg-muted px-2.5 font-sans text-[11px] font-medium text-foreground transition-colors hover:bg-secondary"
             >
-              Pin to B
-            </button>
+              <span>Duel</span>
+              <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3" />
+            </Link>
           </div>
 
           {/* Integrated Platform Footnote */}
