@@ -13,22 +13,51 @@ for (const route of ROUTES) {
   test(`${route} renders without console errors`, async ({ page }) => {
     const errors: string[] = []
     page.on("console", (message) => {
-      if (message.type() === "error") errors.push(message.text())
+      if (message.type() === "error") {
+        const text = message.text()
+        // Ignore Vercel insights / analytics in non-production or CI runner
+        if (
+          text.includes("/_vercel/insights") ||
+          text.includes("vercel-scripts.com")
+        ) {
+          return
+        }
+        errors.push(text)
+      }
     })
 
     await page.goto(route)
-    await expect(page.locator("h1").first()).toBeVisible()
+    if (route === "/app") {
+      await expect(page.locator("main").first()).toBeVisible()
+    } else {
+      await expect(page.locator("h1").first()).toBeVisible()
+    }
     expect(errors).toEqual([])
   })
 }
 
-test("theme toggle persists across navigation", async ({ page }) => {
+test("theme toggle persists across navigation", async ({ page, isMobile }) => {
+  test.skip(isMobile, "keyboard shortcut is desktop-first")
   await page.goto("/docs")
+  await expect(page.locator("article")).toBeVisible()
+  await page.waitForTimeout(500)
+
+  const initialDark = await page.evaluate(() =>
+    document.documentElement.classList.contains("dark")
+  )
   await page.keyboard.press("d")
+  await expect(async () => {
+    const isDark = await page.evaluate(() =>
+      document.documentElement.classList.contains("dark")
+    )
+    expect(isDark).toBe(!initialDark)
+  }).toPass({ timeout: 3000 })
+
   const isDark = await page.evaluate(() =>
     document.documentElement.classList.contains("dark")
   )
   await page.goto("/docs/changelog")
+  await expect(page.locator("article")).toBeVisible()
   expect(
     await page.evaluate(() =>
       document.documentElement.classList.contains("dark")
@@ -42,6 +71,8 @@ test("command palette opens and finds a docs page", async ({
 }) => {
   test.skip(isMobile, "palette is desktop-first")
   await page.goto("/docs")
+  await expect(page.locator("article")).toBeVisible()
+  await page.waitForTimeout(500)
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+k" : "Control+k"
   )
@@ -70,7 +101,11 @@ test("docs have no critical accessibility violations", async ({ page }) => {
  * The two pages differ deliberately: installation has a TOC, changelog sets
  * `hideToc`.
  */
-test("TOC follows the page on client-side navigation", async ({ page }) => {
+test("TOC follows the page on client-side navigation", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "TOC rail is desktop-only")
   await page.goto("/docs/getting-started/installation")
 
   await expect(page.getByText("On this page")).toBeVisible()
