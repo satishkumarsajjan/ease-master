@@ -34,6 +34,9 @@ export interface SliderProps extends Omit<
   tickVariant?: "pills" | "dots" | "ruler"
   tickLabels?: "none" | "under"
   formatValue?: (value: number) => string
+  fillVariant?: "foreground" | "subdued"
+  showValue?: boolean
+  disableTransition?: boolean
 }
 
 export interface NormalizedTick {
@@ -107,6 +110,9 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
       tickVariant = "pills",
       tickLabels = "none",
       formatValue,
+      fillVariant = "foreground",
+      showValue = true,
+      disableTransition = false,
       className,
       ...props
     },
@@ -480,11 +486,11 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
         "pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-150",
         isInverted
           ? isSnapped
-            ? "scale-125 bg-background opacity-100 ring-2 ring-background/30"
-            : "bg-background/25"
+            ? "scale-125 bg-background opacity-100 ring-2 ring-border"
+            : "bg-muted-foreground"
           : isSnapped
-            ? "scale-125 bg-foreground opacity-100 ring-2 ring-foreground/20"
-            : "bg-foreground/20",
+            ? "scale-125 bg-foreground opacity-100 ring-2 ring-border"
+            : "bg-border",
         tickVariant === "pills" &&
           (tick.major
             ? isSnapped
@@ -610,9 +616,10 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
                     style={{
                       left: `${leftLabelOffset}px`,
                       opacity: isLeftEnclosed ? 0 : 1,
-                      transition: isDragging
-                        ? "none"
-                        : "left 200ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease",
+                      transition:
+                        isDragging || disableTransition
+                          ? "none"
+                          : "left 200ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease",
                     }}
                   >
                     {label}
@@ -636,7 +643,7 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
                 )}
 
                 {/* Right Base Value (inline layout only) */}
-                {isInlineLayout && (
+                {isInlineLayout && showValue && (
                   <span
                     className={cn(
                       "absolute top-1/2 right-4 -translate-y-1/2 font-semibold text-foreground tabular-nums transition-opacity duration-150",
@@ -651,15 +658,18 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
               {/* LAYER 3: SOLID FILL (Clipping Mask Window) */}
               <div
                 className={cn(
-                  "pointer-events-none absolute inset-y-0 left-0 overflow-hidden bg-foreground",
-                  sizeConfig.fillRadius,
-                  "shadow-[4px_0_14px_color-mix(in_oklab,var(--foreground)_18%,transparent)] dark:shadow-[4px_0_18px_color-mix(in_oklab,var(--foreground)_25%,transparent)]"
+                  "pointer-events-none absolute inset-y-0 left-0 overflow-hidden",
+                  fillVariant === "subdued"
+                    ? "bg-border"
+                    : "bg-foreground shadow-[4px_0_14px_color-mix(in_oklab,var(--foreground)_18%,transparent)] dark:shadow-[4px_0_18px_color-mix(in_oklab,var(--foreground)_25%,transparent)]",
+                  sizeConfig.fillRadius
                 )}
                 style={{
                   width: `calc(${sizeConfig.minPillWidth}px + ${ratio} * (100% - ${sizeConfig.minPillWidth}px))`,
-                  transition: isDragging
-                    ? "none"
-                    : "width 350ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                  transition:
+                    isDragging || disableTransition
+                      ? "none"
+                      : "width 350ms cubic-bezier(0.2, 0.8, 0.2, 1)",
                 }}
               >
                 {/* FIXED-WIDTH INVERTED CANVAS (100cqw) */}
@@ -679,7 +689,10 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
                       style={{
                         left: `${sizeConfig.naturalLeft}px`,
                         opacity: isLeftEnclosed ? 1 : 0,
-                        transition: isDragging ? "none" : "opacity 150ms ease",
+                        transition:
+                          isDragging || disableTransition
+                            ? "none"
+                            : "opacity 150ms ease",
                       }}
                     >
                       {label}
@@ -711,31 +724,45 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
                   )}
                 >
                   {/* Evacuated Value at >= 78% (inline layout only) */}
-                  {isInlineLayout && isRightEvacuated && (
-                    <span className="animate-in pr-1 text-xs font-semibold text-background tabular-nums duration-100 zoom-in-95 fade-in">
+                  {isInlineLayout && showValue && isRightEvacuated && (
+                    <span
+                      className={cn(
+                        "animate-in pr-1 text-xs font-semibold tabular-nums duration-100 zoom-in-95 fade-in",
+                        fillVariant === "subdued"
+                          ? "text-foreground"
+                          : "text-background"
+                      )}
+                    >
                       {displayValue}
                     </span>
                   )}
 
                   {/* Traveling Value inside fill */}
                   {isTravelingLayout && !isTravelingValueOnRight && (
-                    <span className="animate-in pr-1 text-[11px] font-semibold text-background tabular-nums duration-100 fade-in">
+                    <span
+                      className={cn(
+                        "animate-in pr-1 text-[11px] font-semibold tabular-nums duration-100 fade-in",
+                        fillVariant === "subdued"
+                          ? "text-foreground"
+                          : "text-background"
+                      )}
+                    >
                       {displayValue}
                     </span>
                   )}
 
                   <div
                     className={cn(
-                      "bg-background/40 transition-all duration-150",
+                      disableTransition
+                        ? "transition-none"
+                        : "transition-all duration-150",
                       sizeConfig.handle,
-                      "group-hover:bg-background/80",
-                      activeSnappedTick &&
-                        "bg-background ring-2 ring-background/30",
+                      fillVariant === "subdued"
+                        ? "bg-foreground"
+                        : "bg-background group-hover:bg-accent",
+                      activeSnappedTick && "ring-2 ring-border",
                       isDragging &&
-                        cn(
-                          "bg-background ring-2 ring-background/30",
-                          sizeConfig.handleActive
-                        )
+                        cn("ring-2 ring-primary", sizeConfig.handleActive)
                     )}
                   />
                 </div>
@@ -832,7 +859,7 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
                         "absolute cursor-pointer text-[10px] font-medium tabular-nums transition-colors select-none",
                         isSnapped
                           ? "font-semibold text-foreground"
-                          : "text-muted-foreground/70 hover:text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                       style={{
                         left: cssLeft,
@@ -851,7 +878,7 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
           {isChipLayout && (
             <div
               className={cn(
-                "flex shrink-0 items-center justify-center bg-muted font-semibold text-foreground tabular-nums transition-colors hover:bg-muted/80",
+                "flex shrink-0 items-center justify-center bg-muted font-semibold text-foreground tabular-nums transition-colors hover:bg-accent",
                 sizeConfig.chipSize
               )}
             >
