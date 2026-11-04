@@ -6,6 +6,7 @@ import { ChevronDoubleCloseIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { PreviewBackground } from "@/components/previewer/preview-background"
 import { ViewportMode } from "@/components/previewer/resizable-playground"
 import { cn } from "@/lib/utils"
@@ -33,6 +34,7 @@ interface PreviewTheaterProps {
   toggleCompareQueue: () => void
 }
 
+/** Smallest usable preview stage, in px. Also the hit area of the drag handle. */
 const MIN_STAGE_W = 320
 
 export function PreviewTheater({
@@ -56,24 +58,8 @@ export function PreviewTheater({
   toggleCompareQueue,
 }: PreviewTheaterProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const frameRef = React.useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = React.useState(false)
-  const [measuredWidth, setMeasuredWidth] = React.useState<number | null>(null)
 
-  // Track live rendered frame width for the telemetry pill
-  React.useEffect(() => {
-    const frame = frameRef.current
-    if (!frame) return
-    const updateSize = () => {
-      setMeasuredWidth(Math.round(frame.getBoundingClientRect().width))
-    }
-    updateSize()
-    const ro = new ResizeObserver(updateSize)
-    ro.observe(frame)
-    return () => ro.disconnect()
-  }, [])
-
-  // Symmetrical Centered Resize Gesture
   const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     setIsDragging(true)
@@ -84,17 +70,12 @@ export function PreviewTheater({
     const handlePointerMove = (e: PointerEvent) => {
       if (!isDragging || !containerRef.current) return
       const containerRect = containerRef.current.getBoundingClientRect()
-      const centerX = containerRect.left + containerRect.width / 2
-
-      // Symmetrical distance from center origin
-      const distFromCenter = Math.abs(e.clientX - centerX)
-      const rawWidth = distFromCenter * 2
-
-      const minWidth = MIN_STAGE_W
-      const maxWidth = containerRect.width
-
-      const nextWidth = Math.min(maxWidth, Math.max(minWidth, rawWidth))
-      setPreviewWidth(Math.round(nextWidth))
+      const raw = e.clientX - containerRect.left
+      const nextWidth = Math.min(
+        Math.max(raw, MIN_STAGE_W),
+        containerRect.width
+      )
+      setPreviewWidth(nextWidth)
       setViewportMode("custom")
     }
 
@@ -129,12 +110,6 @@ export function PreviewTheater({
       ? 0
       : (1 - Math.min(1, Math.max(0, currentEasedA))) * 2
 
-  const displayWidth = measuredWidth
-    ? `${measuredWidth}px`
-    : typeof previewWidth === "number"
-      ? `${previewWidth}px`
-      : previewWidth
-
   return (
     <TooltipProvider delayDuration={150}>
       <section
@@ -142,108 +117,77 @@ export function PreviewTheater({
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-background p-2 transition-colors select-none"
       >
         {/* Stage Container */}
-        <div
-          ref={containerRef}
-          className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[16px]"
-        >
+        <div className="relative flex h-full w-full overflow-hidden rounded-[16px]">
           {/* Workbench Cutting-Mat Substrate */}
           <PreviewBackground />
 
-          {/* Live Dimension Telemetry Pill (Centered at Top) */}
-          <div className="pointer-events-none absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-[10px] bg-background px-3 py-1 font-mono text-xs select-none">
-            <span className="font-semibold text-foreground">
-              {displayWidth}
-            </span>
-            <span className="text-muted-foreground">·</span>
-            <span className="font-sans text-[11px] font-medium text-muted-foreground capitalize">
-              {viewportMode}
-            </span>
-          </div>
-
-          {/* Interactive Resizable Device Frame (Centered Horizontally & Vertically) */}
-          <motion.div
-            ref={frameRef}
-            key={animKey}
-            initial={false}
-            animate={{ width: previewWidth }}
-            transition={{
-              type: "spring",
-              bounce: 0,
-              duration: isDragging ? 0 : 0.4,
-            }}
-            className={cn(
-              "relative flex h-full max-w-full flex-row items-center justify-center overflow-hidden rounded-[20px] bg-muted",
-              isDragging && "select-none"
-            )}
+          {/* Resizable Playground Canvas */}
+          <div
+            className="pointer-events-none absolute inset-0 flex"
+            ref={containerRef}
           >
-            {/* Left Col-Resize Drag Handle */}
-            <div
-              onPointerDown={handlePointerDown}
-              title="Drag symmetrically to resize viewport"
-              className="group absolute top-0 left-0 z-40 flex h-full w-4 cursor-col-resize items-center justify-center select-none"
+            <motion.div
+              initial={false}
+              animate={{ width: previewWidth }}
+              transition={{
+                type: "spring",
+                bounce: 0,
+                duration: isDragging ? 0 : 0.4,
+              }}
+              className="pointer-events-auto relative flex h-full max-w-full flex-row overflow-hidden rounded-2xl bg-muted"
             >
-              <div
+              {/* Direct Render Mode inside ScrollArea with Negative-Space Grid Trick */}
+              <ScrollArea
+                key={animKey}
                 className={cn(
-                  "flex h-[36%] w-1.5 items-center justify-center rounded-full transition-colors",
-                  isDragging
-                    ? "bg-foreground"
-                    : "bg-muted-foreground group-hover:bg-foreground"
+                  "flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-muted",
+                  isDragging && "pointer-events-none select-none"
                 )}
               >
-                <HugeiconsIcon
-                  icon={ChevronDoubleCloseIcon}
-                  className="size-3 text-background opacity-0 transition-opacity group-hover:opacity-100"
-                />
-              </div>
-            </div>
+                <div className="grid min-h-full min-w-full grid-cols-1 grid-rows-[minmax(100%,max-content)]">
+                  <div className="flex h-full w-full flex-col items-center justify-center p-6 select-none">
+                    <Button
+                      size="default"
+                      onPointerDown={() => setButtonPressed(true)}
+                      onPointerUp={() => {
+                        setButtonPressed(false)
+                        triggerSingleAnimation()
+                      }}
+                      onClick={triggerSingleAnimation}
+                      style={{
+                        transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
+                      }}
+                      className="transition-transform duration-75 select-none"
+                    >
+                      Button
+                    </Button>
+                  </div>
+                </div>
+                <ScrollBar orientation="vertical" />
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
 
-            {/* Negative-Space Protection Optical Centering Grid */}
-            <div
-              className={cn(
-                "grid h-full min-h-full w-full min-w-full grid-cols-1 grid-rows-[minmax(100%,max-content)] overflow-hidden",
-                isDragging && "pointer-events-none select-none"
-              )}
-            >
-              <div className="flex h-full w-full items-center justify-center p-6 select-none">
-                <Button
-                  size="default"
-                  onPointerDown={() => setButtonPressed(true)}
-                  onPointerUp={() => {
-                    setButtonPressed(false)
-                    triggerSingleAnimation()
-                  }}
-                  onClick={triggerSingleAnimation}
-                  style={{
-                    transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
-                  }}
-                  className="transition-transform duration-75 select-none"
+              {/* Absolutely positioned right-edge col-resize handle */}
+              <div
+                onPointerDown={handlePointerDown}
+                className="group absolute top-0 right-0 z-50 flex h-full w-4 cursor-col-resize items-center justify-center select-none"
+              >
+                <div
+                  className={cn(
+                    "flex h-[40%] w-1.5 items-center justify-center rounded-full transition-colors",
+                    isDragging
+                      ? "bg-foreground"
+                      : "bg-border group-hover:bg-foreground"
+                  )}
                 >
-                  Button
-                </Button>
+                  <HugeiconsIcon
+                    icon={ChevronDoubleCloseIcon}
+                    className="size-3.5 text-background opacity-0 transition-opacity group-hover:opacity-100"
+                  />
+                </div>
               </div>
-            </div>
-
-            {/* Right Col-Resize Drag Handle */}
-            <div
-              onPointerDown={handlePointerDown}
-              title="Drag symmetrically to resize viewport"
-              className="group absolute top-0 right-0 z-40 flex h-full w-4 cursor-col-resize items-center justify-center select-none"
-            >
-              <div
-                className={cn(
-                  "flex h-[36%] w-1.5 items-center justify-center rounded-full transition-colors",
-                  isDragging
-                    ? "bg-foreground"
-                    : "bg-muted-foreground group-hover:bg-foreground"
-                )}
-              >
-                <HugeiconsIcon
-                  icon={ChevronDoubleCloseIcon}
-                  className="size-3 text-background opacity-0 transition-opacity group-hover:opacity-100"
-                />
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
 
           {/* Floating Audition Toolbar (Positioned Absolutely in Bottom-Left) */}
           <AuditionToolbar
