@@ -140,28 +140,26 @@ export function PreviewTheater({
               <ScrollArea
                 key={animKey}
                 className={cn(
-                  "flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-muted",
+                  "flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-muted [&_[data-slot=scroll-area-viewport]>div]:!flex [&_[data-slot=scroll-area-viewport]>div]:!h-full [&_[data-slot=scroll-area-viewport]>div]:!min-h-full [&_[data-slot=scroll-area-viewport]>div]:!flex-col",
                   isDragging && "pointer-events-none select-none"
                 )}
               >
-                <div className="grid min-h-full min-w-full grid-cols-1 grid-rows-[minmax(100%,max-content)]">
-                  <div className="flex h-full w-full flex-col items-center justify-center p-6 select-none">
-                    <Button
-                      size="default"
-                      onPointerDown={() => setButtonPressed(true)}
-                      onPointerUp={() => {
-                        setButtonPressed(false)
-                        triggerSingleAnimation()
-                      }}
-                      onClick={triggerSingleAnimation}
-                      style={{
-                        transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
-                      }}
-                      className="transition-transform duration-75 select-none"
-                    >
-                      Button
-                    </Button>
-                  </div>
+                <div className="flex h-full min-h-full w-full flex-1 flex-col items-center justify-center p-6 select-none">
+                  <Button
+                    size="default"
+                    onPointerDown={() => setButtonPressed(true)}
+                    onPointerUp={() => {
+                      setButtonPressed(false)
+                      triggerSingleAnimation()
+                    }}
+                    onClick={triggerSingleAnimation}
+                    style={{
+                      transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
+                    }}
+                    className="transition-transform duration-75 select-none"
+                  >
+                    Button
+                  </Button>
                 </div>
                 <ScrollBar orientation="vertical" />
                 <ScrollBar orientation="horizontal" />
