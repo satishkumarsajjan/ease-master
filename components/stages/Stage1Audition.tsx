@@ -71,10 +71,7 @@ export function Stage1Audition() {
   const [playbackSpeed, setPlaybackSpeed] = React.useState<number>(1)
   const [scrubProgress, setScrubProgress] = React.useState<number>(100)
   const [isScrubbing, setIsScrubbing] = React.useState<boolean>(false)
-  const [lifecyclePhase, setLifecyclePhase] = React.useState<"enter" | "exit">(
-    "enter"
-  )
-  const [isReducedMotion, setIsReducedMotion] = React.useState<boolean>(false)
+  const [isReducedMotion] = React.useState<boolean>(false)
   const [animKey, setAnimKey] = React.useState<number>(0)
 
   // Interactive Tactile Button States
@@ -234,9 +231,8 @@ export function Stage1Audition() {
   )
 
   const currentEasedA = React.useMemo(() => {
-    const raw = getEasedValue(scrubProgress, activePresetMeta, isReducedMotion)
-    return lifecyclePhase === "enter" ? raw : 1 - raw
-  }, [scrubProgress, activePresetMeta, isReducedMotion, lifecyclePhase])
+    return getEasedValue(scrubProgress, activePresetMeta, isReducedMotion)
+  }, [scrubProgress, activePresetMeta, isReducedMotion])
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -400,7 +396,6 @@ export function Stage1Audition() {
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}
           activePresetMeta={activePresetMeta}
-          compareQueue={compareQueue}
           scrubProgress={scrubProgress}
           setScrubProgress={setScrubProgress}
           setIsScrubbing={setIsScrubbing}
@@ -408,10 +403,6 @@ export function Stage1Audition() {
           setIsLooping={setIsLooping}
           playbackSpeed={playbackSpeed}
           setPlaybackSpeed={setPlaybackSpeed}
-          lifecyclePhase={lifecyclePhase}
-          setLifecyclePhase={setLifecyclePhase}
-          isReducedMotion={isReducedMotion}
-          setIsReducedMotion={setIsReducedMotion}
           setAnimKey={setAnimKey}
         />
       </main>
