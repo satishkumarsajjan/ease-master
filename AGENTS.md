@@ -24,12 +24,13 @@ You are working inside a **Satisium product** created from the Satisium Starter.
 
 ## Read first (in this order)
 
-1. `PRODUCT_SPEC.template.md` — the product intake blueprint (metadata, taxonomy, sitelinks, FAQs).
-2. `SEO_AEO_STRATEGY.md` — 3-engine discovery strategy (SEO, AEO, GEO), SERP sitelinks, and schema graph.
-3. `ANALYTICS_MANUAL.md` — 4-tier telemetry architecture, $0 stack, and event taxonomy.
-4. `starter-template.md` — build order, the shell, tooling.
-5. `component-kit.md` — the template component library (components, hooks, lib).
-6. `content/docs/**` — user-facing behaviour; the source of truth.
+1. `FEATURE_WORKFLOW.md` — feature branching, zero-autonomous-git protocol, and Founder QA gating.
+2. `PRODUCT_SPEC.template.md` — the product intake blueprint (metadata, taxonomy, sitelinks, FAQs).
+3. `SEO_AEO_STRATEGY.md` — 3-engine discovery strategy (SEO, AEO, GEO), SERP sitelinks, and schema graph.
+4. `ANALYTICS_MANUAL.md` — 4-tier telemetry architecture, $0 stack, and event taxonomy.
+5. `starter-template.md` — build order, the shell, tooling.
+6. `component-kit.md` — the template component library (components, hooks, lib).
+7. `content/docs/**` — user-facing behaviour; the source of truth.
 
 ## Product Generation Protocol (Building a Satisium Tool)
 
@@ -89,6 +90,7 @@ When instructing or acting as an AI agent to build a specific app, studio, or Sa
 
 ## Non-negotiables
 
+- **Zero autonomous git actions:** strictly follow `FEATURE_WORKFLOW.md`. Never run `git commit`, `git push`, or `gh pr create` without an explicit instruction from the Founder. Always pause in the working tree for interactive browser QA.
 - **Tokens only.** No hex/rgb/`text-gray-500`. Radius, type and motion rules: `component-kit.md` §2.3.
 - **Zero opacity modifiers.** Never use Tailwind opacity modifiers on colors (e.g. `bg-secondary/70`, `text-muted-foreground/80`, `bg-foreground/20`). Always use discrete semantic variables and surface tokens directly (`bg-secondary`, `bg-muted`, `text-muted-foreground`, `bg-card`). Opacity hacking causes unpredictable substrate bleed, luminosity shifts, and color mismatches.
 - **Routes:** every path comes from `lib/routes.ts`. Never write a literal `href="/…"`.
