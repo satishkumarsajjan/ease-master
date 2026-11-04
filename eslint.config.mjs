@@ -25,6 +25,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".kilo/**",
     ".source/**",
+    "playwright-report/**",
+    "test-results/**",
+    "coverage/**",
   ]),
 ]);
 

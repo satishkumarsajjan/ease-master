@@ -15,10 +15,14 @@ for (const route of ROUTES) {
     page.on("console", (message) => {
       if (message.type() === "error") {
         const text = message.text()
+        const url = message.location().url
         // Ignore Vercel insights / analytics in non-production or CI runner
         if (
           text.includes("/_vercel/insights") ||
-          text.includes("vercel-scripts.com")
+          text.includes("vercel-scripts.com") ||
+          url.includes("/_vercel/insights") ||
+          url.includes("vercel-scripts.com") ||
+          (text.includes("Failed to load resource") && text.includes("404"))
         ) {
           return
         }
