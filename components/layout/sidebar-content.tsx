@@ -276,7 +276,10 @@ export function SidebarContent({
             <span className="truncate font-heading text-base font-bold tracking-tight text-foreground">
               {PRODUCT.name}
             </span>
-            <Badge className="-mt-1 ml-1.5 h-[18px] shrink-0 rounded-[5px] border-none bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground hover:bg-primary">
+            <Badge
+              variant="secondary"
+              className="-mt-1 ml-1.5 h-[18px] shrink-0 rounded-[5px] border-none px-1.5 text-[10px] font-semibold"
+            >
               Beta
             </Badge>
           </div>
@@ -345,7 +348,7 @@ export function SidebarContent({
           <Link
             href={AUTHOR.website || AUTHOR.x}
             target="_blank"
-            className="text-primary hover:underline focus-visible:outline-none"
+            className="font-medium text-foreground hover:underline focus-visible:outline-none"
           >
             {AUTHOR.name}
           </Link>

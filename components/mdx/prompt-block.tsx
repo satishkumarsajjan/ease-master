@@ -26,7 +26,7 @@ export function PromptBlock({
       )}
     >
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
-        <span className="font-mono text-[11px] font-bold tracking-widest text-muted-foreground uppercase">
+        <span className="font-mono text-[11px] font-bold tracking-widest text-foreground uppercase">
           {title}
         </span>
         <button

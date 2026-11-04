@@ -36,6 +36,7 @@ export const SidebarFooter = () => {
               href={AUTHOR.x}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Connect with me on X"
               className="group flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-background text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             >
               <HugeiconsIcon

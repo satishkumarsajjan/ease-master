@@ -25,7 +25,10 @@ export function EaseWorkstation() {
   const { mode, setMode, presetInfo } = useEaseStore()
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground select-none">
+    <main
+      id="main-content"
+      className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground select-none"
+    >
       {/* 1. TOP WORKSTATION HEADER */}
       <header className="z-30 flex h-14 w-full shrink-0 items-center justify-between border-b border-border bg-background px-4 sm:px-6">
         {/* Left: Brand + Mode Switcher */}
@@ -152,6 +155,6 @@ export function EaseWorkstation() {
           </div>
         </aside>
       </div>
-    </div>
+    </main>
   )
 }

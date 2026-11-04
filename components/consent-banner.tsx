@@ -32,7 +32,11 @@ export function ConsentBanner() {
           <Button variant="ghost" size="sm" onClick={decline}>
             Decline
           </Button>
-          <Button size="sm" onClick={accept}>
+          <Button
+            size="sm"
+            className="bg-foreground text-background hover:bg-foreground"
+            onClick={accept}
+          >
             Accept
           </Button>
         </div>
