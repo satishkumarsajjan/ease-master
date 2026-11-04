@@ -2,25 +2,30 @@
 
 import * as React from "react"
 import { motion } from "motion/react"
+import { ChevronDoubleCloseIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { PreviewBackground } from "@/components/previewer/preview-background"
 import { ViewportMode } from "@/components/previewer/resizable-playground"
+import { cn } from "@/lib/utils"
 import { AuditionToolbar } from "./audition-toolbar"
 import { ArchetypeKey } from "../stage-1-types"
 
 interface PreviewTheaterProps {
   previewWidth: number | string
+  setPreviewWidth: (w: number | string) => void
+  viewportMode: ViewportMode
+  setViewportMode: (mode: ViewportMode) => void
+  handleViewportChange: (mode: ViewportMode) => void
   animKey: number
   activeScenarioKey: ArchetypeKey
+  setActiveScenarioKey: (val: ArchetypeKey) => void
   currentEasedA: number
   buttonPressed: boolean
   setButtonPressed: (pressed: boolean) => void
   isReducedMotion: boolean
   triggerSingleAnimation: () => void
-  viewportMode: ViewportMode
-  handleViewportChange: (mode: ViewportMode) => void
-  setActiveScenarioKey: (val: ArchetypeKey) => void
   isTimelineOpen: boolean
   setIsTimelineOpen: React.Dispatch<React.SetStateAction<boolean>>
   compareQueue: string[]
@@ -28,24 +33,90 @@ interface PreviewTheaterProps {
   toggleCompareQueue: () => void
 }
 
+const MIN_STAGE_W = 320
+
 export function PreviewTheater({
   previewWidth,
+  setPreviewWidth,
+  viewportMode,
+  setViewportMode,
+  handleViewportChange,
   animKey,
   activeScenarioKey,
+  setActiveScenarioKey,
   currentEasedA,
   buttonPressed,
   setButtonPressed,
   isReducedMotion,
   triggerSingleAnimation,
-  viewportMode,
-  handleViewportChange,
-  setActiveScenarioKey,
   isTimelineOpen,
   setIsTimelineOpen,
   compareQueue,
   isCurrentCurveQueued,
   toggleCompareQueue,
 }: PreviewTheaterProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const frameRef = React.useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const [measuredWidth, setMeasuredWidth] = React.useState<number | null>(null)
+
+  // Track live rendered frame width for the telemetry pill
+  React.useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    const updateSize = () => {
+      setMeasuredWidth(Math.round(frame.getBoundingClientRect().width))
+    }
+    updateSize()
+    const ro = new ResizeObserver(updateSize)
+    ro.observe(frame)
+    return () => ro.disconnect()
+  }, [])
+
+  // Symmetrical Centered Resize Gesture
+  const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+    document.body.style.cursor = "col-resize"
+  }, [])
+
+  React.useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDragging || !containerRef.current) return
+      const containerRect = containerRef.current.getBoundingClientRect()
+      const centerX = containerRect.left + containerRect.width / 2
+
+      // Symmetrical distance from center origin
+      const distFromCenter = Math.abs(e.clientX - centerX)
+      const rawWidth = distFromCenter * 2
+
+      const minWidth = MIN_STAGE_W
+      const maxWidth = containerRect.width
+
+      const nextWidth = Math.min(maxWidth, Math.max(minWidth, rawWidth))
+      setPreviewWidth(Math.round(nextWidth))
+      setViewportMode("custom")
+    }
+
+    const handlePointerUp = () => {
+      setIsDragging(false)
+      document.body.style.cursor = ""
+    }
+
+    if (isDragging) {
+      window.addEventListener("pointermove", handlePointerMove)
+      window.addEventListener("pointerup", handlePointerUp)
+    }
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+      if (isDragging) {
+        document.body.style.cursor = ""
+      }
+    }
+  }, [isDragging, setPreviewWidth, setViewportMode])
+
   const pressScale = buttonPressed
     ? 0.94
     : isReducedMotion
@@ -58,46 +129,119 @@ export function PreviewTheater({
       ? 0
       : (1 - Math.min(1, Math.max(0, currentEasedA))) * 2
 
+  const displayWidth = measuredWidth
+    ? `${measuredWidth}px`
+    : typeof previewWidth === "number"
+      ? `${previewWidth}px`
+      : previewWidth
+
   return (
     <TooltipProvider delayDuration={150}>
       <section
         aria-label="Block 4: Component Preview Theater"
-        className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-background p-2 transition-colors"
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-background p-2 transition-colors select-none"
       >
         {/* Stage Container */}
-        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[16px]">
+        <div
+          ref={containerRef}
+          className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[16px]"
+        >
           {/* Workbench Cutting-Mat Substrate */}
           <PreviewBackground />
 
+          {/* Live Dimension Telemetry Pill (Centered at Top) */}
+          <div className="pointer-events-none absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-[10px] bg-background px-3 py-1 font-mono text-xs select-none">
+            <span className="font-semibold text-foreground">
+              {displayWidth}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-sans text-[11px] font-medium text-muted-foreground capitalize">
+              {viewportMode}
+            </span>
+          </div>
+
           {/* Interactive Resizable Device Frame (Centered Horizontally & Vertically) */}
           <motion.div
+            ref={frameRef}
             key={animKey}
             initial={false}
             animate={{ width: previewWidth }}
             transition={{
               type: "spring",
               bounce: 0,
-              duration: 0.4,
+              duration: isDragging ? 0 : 0.4,
             }}
-            className="relative flex h-full max-w-full items-center justify-center overflow-hidden rounded-2xl bg-muted"
+            className={cn(
+              "relative flex h-full max-w-full flex-row items-center justify-center overflow-hidden rounded-[20px] bg-muted",
+              isDragging && "select-none"
+            )}
           >
-            {/* Centered Button Archetype */}
-            <div className="flex h-full w-full items-center justify-center p-6 select-none">
-              <Button
-                size="default"
-                onPointerDown={() => setButtonPressed(true)}
-                onPointerUp={() => {
-                  setButtonPressed(false)
-                  triggerSingleAnimation()
-                }}
-                onClick={triggerSingleAnimation}
-                style={{
-                  transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
-                }}
-                className="transition-transform duration-75 select-none"
+            {/* Left Col-Resize Drag Handle */}
+            <div
+              onPointerDown={handlePointerDown}
+              title="Drag symmetrically to resize viewport"
+              className="group absolute top-0 left-0 z-40 flex h-full w-4 cursor-col-resize items-center justify-center select-none"
+            >
+              <div
+                className={cn(
+                  "flex h-[36%] w-1.5 items-center justify-center rounded-full transition-colors",
+                  isDragging
+                    ? "bg-foreground"
+                    : "bg-muted-foreground group-hover:bg-foreground"
+                )}
               >
-                Button
-              </Button>
+                <HugeiconsIcon
+                  icon={ChevronDoubleCloseIcon}
+                  className="size-3 text-background opacity-0 transition-opacity group-hover:opacity-100"
+                />
+              </div>
+            </div>
+
+            {/* Negative-Space Protection Optical Centering Grid */}
+            <div
+              className={cn(
+                "grid h-full min-h-full w-full min-w-full grid-cols-1 grid-rows-[minmax(100%,max-content)] overflow-hidden",
+                isDragging && "pointer-events-none select-none"
+              )}
+            >
+              <div className="flex h-full w-full items-center justify-center p-6 select-none">
+                <Button
+                  size="default"
+                  onPointerDown={() => setButtonPressed(true)}
+                  onPointerUp={() => {
+                    setButtonPressed(false)
+                    triggerSingleAnimation()
+                  }}
+                  onClick={triggerSingleAnimation}
+                  style={{
+                    transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
+                  }}
+                  className="transition-transform duration-75 select-none"
+                >
+                  Button
+                </Button>
+              </div>
+            </div>
+
+            {/* Right Col-Resize Drag Handle */}
+            <div
+              onPointerDown={handlePointerDown}
+              title="Drag symmetrically to resize viewport"
+              className="group absolute top-0 right-0 z-40 flex h-full w-4 cursor-col-resize items-center justify-center select-none"
+            >
+              <div
+                className={cn(
+                  "flex h-[36%] w-1.5 items-center justify-center rounded-full transition-colors",
+                  isDragging
+                    ? "bg-foreground"
+                    : "bg-muted-foreground group-hover:bg-foreground"
+                )}
+              >
+                <HugeiconsIcon
+                  icon={ChevronDoubleCloseIcon}
+                  className="size-3 text-background opacity-0 transition-opacity group-hover:opacity-100"
+                />
+              </div>
             </div>
           </motion.div>
 
