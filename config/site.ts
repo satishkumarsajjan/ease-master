@@ -143,7 +143,7 @@ export interface SocialLink {
 export const PROJECT = {
   name: "Ease",
   x: "https://x.com/satisium",
-  github: "https://github.com/satishkumarsajjan/ease",
+  github: "https://github.com/satisium/ease",
   discord: "https://discord.gg/xQ5cPHmT7",
   instagram: "https://www.instagram.com/satisium/",
 } as const
@@ -158,7 +158,7 @@ export const AUTHOR = {
 /**
  * owner/repo in "owner/name" form.
  */
-export const REPO = "satishkumarsajjan/ease"
+export const REPO = "satisium/ease"
 
 export const FOOTER_SOCIALS: SocialLink[] = [
   {
