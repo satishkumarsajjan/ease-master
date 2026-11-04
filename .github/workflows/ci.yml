@@ -16,9 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-        with: { version: 12 }
       - uses: actions/setup-node@v7
-        with: { node-version: 20, cache: "pnpm" }
+        with: { node-version: 22, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
@@ -29,9 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-        with: { version: 12 }
       - uses: actions/setup-node@v7
-        with: { node-version: 20, cache: "pnpm" }
+        with: { node-version: 22, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:coverage
       - uses: actions/upload-artifact@v5
@@ -43,9 +41,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-        with: { version: 12 }
       - uses: actions/setup-node@v7
-        with: { node-version: 20, cache: "pnpm" }
+        with: { node-version: 22, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:registry:meta && pnpm registry:public
       - run: pnpm build
@@ -60,9 +57,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-        with: { version: 12 }
       - uses: actions/setup-node@v7
-        with: { node-version: 20, cache: "pnpm" }
+        with: { node-version: 22, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm e2e

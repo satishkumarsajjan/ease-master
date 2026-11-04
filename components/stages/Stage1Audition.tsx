@@ -376,16 +376,18 @@ export function Stage1Audition() {
       <main className="flex min-w-0 flex-1 flex-col gap-2">
         <PreviewTheater
           previewWidth={previewWidth}
+          setPreviewWidth={setPreviewWidth}
+          viewportMode={viewportMode}
+          setViewportMode={setViewportMode}
+          handleViewportChange={handleViewportChange}
           animKey={animKey}
           activeScenarioKey={activeScenarioKey}
+          setActiveScenarioKey={setActiveScenarioKey}
           currentEasedA={currentEasedA}
           buttonPressed={buttonPressed}
           setButtonPressed={setButtonPressed}
           isReducedMotion={isReducedMotion}
           triggerSingleAnimation={triggerSingleAnimation}
-          viewportMode={viewportMode}
-          handleViewportChange={handleViewportChange}
-          setActiveScenarioKey={setActiveScenarioKey}
           isTimelineOpen={isTimelineOpen}
           setIsTimelineOpen={setIsTimelineOpen}
           compareQueue={compareQueue}
