@@ -4,7 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    # Paused during active design & workstation development
+    open-pull-requests-limit: 0
     groups:
       dev-dependencies:
         dependency-type: development
