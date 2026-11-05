@@ -117,26 +117,9 @@ export function TimelineConsole({
           className="shrink-0 overflow-hidden"
         >
           <TooltipProvider delayDuration={150}>
-            <motion.section
-              initial={{ y: 20 }}
-              animate={{
-                y: 0,
-                transition: {
-                  type: "spring",
-                  stiffness: 450,
-                  damping: 38,
-                  mass: 0.8,
-                },
-              }}
-              exit={{
-                y: 20,
-                transition: {
-                  duration: 0.18,
-                  ease: [0.4, 0, 1, 1],
-                },
-              }}
+            <section
               aria-label="Block 6: Master Precision Timeline Dock"
-              className="flex h-[82px] w-full flex-col justify-between rounded-[20px] bg-background p-2.5 px-3.5 transition-colors select-none"
+              className="flex w-full shrink-0 flex-col gap-3 rounded-[20px] bg-background p-3.5 px-4 transition-colors select-none"
             >
               {/* Row 1: Full-Width Satisium Reimagined Slider (Option A: inline layout) */}
               <div
@@ -160,7 +143,7 @@ export function TimelineConsole({
               </div>
 
               {/* Row 2: Precision Transport Controls & Sharp Readout */}
-              <div className="flex shrink-0 items-center justify-between pt-1">
+              <div className="flex shrink-0 items-center justify-between">
                 {/* Left: Minimal Icon Transport Cluster */}
                 <div className="flex items-center gap-1.5">
                   {/* Play / Pause Toggle */}
@@ -306,7 +289,7 @@ export function TimelineConsole({
                   </div>
                 </div>
               </div>
-            </motion.section>
+            </section>
           </TooltipProvider>
         </motion.div>
       )}
