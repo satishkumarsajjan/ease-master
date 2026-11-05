@@ -16,8 +16,10 @@ import { BrandSlab } from "./stage-1/left-flank/brand-slab"
 import { PresetCatalog } from "./stage-1/left-flank/preset-catalog"
 import { PreviewTheater } from "./stage-1/center-stage/preview-theater"
 import { TimelineConsole } from "./stage-1/center-stage/timeline-console"
+import { ArchetypeAdvisorSlab } from "./stage-1/right-flank/archetype-advisor-slab"
 import { ExportSlab } from "./stage-1/right-flank/export-slab"
 import { CompareQueueSlab } from "./stage-1/right-flank/compare-queue-slab"
+import { SponsorAdSlab } from "./stage-1/right-flank/sponsor-ad-slab"
 import { useStage1Store } from "@/store/useStage1Store"
 import { useMounted } from "@/hooks/use-mounted"
 
@@ -68,6 +70,8 @@ export function Stage1Audition({
     setIsLooping,
     isReducedMotion,
     setIsReducedMotion,
+    compareQueue,
+    setCompareQueue,
   } = useStage1Store()
 
   // Prioritize server cookie on initial render to guarantee zero FOUC / zero layout shift
@@ -75,13 +79,6 @@ export function Stage1Audition({
   const isTimelineOpen = isMounted
     ? storeIsTimelineOpen
     : (initialTimelineOpen ?? storeIsTimelineOpen)
-
-  // Column 3 (Right Flank): Deferred to next phase
-  const [compareQueue, setCompareQueue] = React.useState<string[]>([])
-  const [exportFramework, setExportFramework] = React.useState<
-    "CSS" | "Tailwind" | "Motion" | "SwiftUI"
-  >("CSS")
-  const [hasCopiedToken, setHasCopiedToken] = React.useState(false)
 
   // Column 2 Runtime Playback: Strictly ephemeral (always calm at rest on load)
   const [isPlaying, setIsPlaying] = React.useState<boolean>(false)
@@ -104,12 +101,9 @@ export function Stage1Audition({
       if (prev.includes(activePresetId)) {
         return prev.filter((id) => id !== activePresetId)
       }
-      if (prev.length >= 3) {
-        return [...prev.slice(1), activePresetId]
-      }
       return [...prev, activePresetId]
     })
-  }, [activePresetId])
+  }, [activePresetId, setCompareQueue])
 
   const triggerSingleAnimation = React.useCallback(() => {
     setScrubProgress(0)
@@ -343,41 +337,6 @@ export function Stage1Audition({
     activePresetMeta.duration,
   ])
 
-  const getExportSnippet = React.useCallback(() => {
-    const dur = activePresetMeta.duration
-    const val = activePresetMeta.values
-    if (exportFramework === "CSS") {
-      return activePresetMeta.engine === "bezier"
-        ? `transition: all ${dur}ms cubic-bezier(${val});`
-        : `/* Spring: ${val} (${dur}ms) */`
-    }
-    if (exportFramework === "Tailwind") {
-      return activePresetMeta.engine === "bezier"
-        ? `transition-all duration-[${dur}ms] ease-[cubic-bezier(${val})]`
-        : `transition-all duration-[${dur}ms]`
-    }
-    if (exportFramework === "Motion") {
-      return `<motion.div\n  transition={{\n    duration: ${(dur / 1000).toFixed(2)},\n    ease: [${val}],\n  }}\n/>`
-    }
-    if (exportFramework === "SwiftUI") {
-      return `.animation(\n  .timingCurve(${val},\n    duration: ${(dur / 1000).toFixed(2)}\n  ),\n  value: trigger\n)`
-    }
-    return ""
-  }, [
-    activePresetMeta.duration,
-    activePresetMeta.values,
-    activePresetMeta.engine,
-    exportFramework,
-  ])
-
-  const handleCopyToken = React.useCallback(() => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(getExportSnippet())
-      setHasCopiedToken(true)
-      setTimeout(() => setHasCopiedToken(false), 2000)
-    }
-  }, [getExportSnippet])
-
   return (
     <div className="flex h-dvh w-full gap-2 overflow-hidden bg-muted p-2 font-sans select-none">
       {/* =====================================================================
@@ -443,16 +402,17 @@ export function Stage1Audition({
       </main>
 
       {/* =====================================================================
-          RIGHT FLANK: 300px Fixed Width (Blocks 7 & 8)
+          RIGHT FLANK: 300px Fixed Width (Blocks 7, 8, Export Trigger & 9)
           ===================================================================== */}
       <aside className="flex w-[300px] shrink-0 flex-col gap-2">
-        <ExportSlab
+        <ArchetypeAdvisorSlab
           activePresetMeta={activePresetMeta}
-          exportFramework={exportFramework}
-          setExportFramework={setExportFramework}
-          hasCopiedToken={hasCopiedToken}
-          handleCopyToken={handleCopyToken}
-          getExportSnippet={getExportSnippet}
+          activePresetId={activePresetId}
+          activeEngine={activeEngine}
+          activeScenarioKey={activeScenarioKey}
+          resolveEase={resolveEase}
+          setActivePresetId={setActivePresetId}
+          setActiveEngine={setActiveEngine}
         />
 
         <CompareQueueSlab
@@ -463,6 +423,14 @@ export function Stage1Audition({
           toggleCompareQueue={toggleCompareQueue}
           resolveEase={resolveEase}
         />
+
+        <ExportSlab
+          onOpenExportDialog={() => {
+            // Placeholder: opens export modal dialog
+          }}
+        />
+
+        <SponsorAdSlab />
       </aside>
     </div>
   )
