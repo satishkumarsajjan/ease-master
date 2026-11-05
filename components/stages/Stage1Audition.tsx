@@ -6,13 +6,7 @@ import { ViewportMode } from "@/components/previewer/resizable-playground"
 import { BEZIER_PRESETS, SPRING_PRESETS } from "@/core/presets"
 import { BezierConfig, SpringConfig } from "@/core/types"
 import { ROUTES } from "@/lib/routes"
-import {
-  CustomEase,
-  EaseDossier,
-  StackLevel,
-  ArchetypeKey,
-} from "./stage-1/stage-1-types"
-import { INITIAL_CUSTOM_CURVES } from "./stage-1/stage-1-curves"
+import { EaseDossier } from "./stage-1/stage-1-types"
 import {
   computeKineticIntel,
   getActivePresetMeta,
@@ -24,6 +18,8 @@ import { PreviewTheater } from "./stage-1/center-stage/preview-theater"
 import { TimelineConsole } from "./stage-1/center-stage/timeline-console"
 import { ExportSlab } from "./stage-1/right-flank/export-slab"
 import { CompareQueueSlab } from "./stage-1/right-flank/compare-queue-slab"
+import { useStage1Store } from "@/store/useStage1Store"
+import { useMounted } from "@/hooks/use-mounted"
 
 export type * from "./stage-1/stage-1-types"
 
@@ -40,35 +36,55 @@ export type * from "./stage-1/stage-1-types"
  * - Gutters: Exactly 8px (gap-2 p-2) exposing the sunken bg-muted substrate.
  * ============================================================================
  */
-export function Stage1Audition() {
+interface Stage1AuditionProps {
+  initialTimelineOpen?: boolean
+}
+
+export function Stage1Audition({
+  initialTimelineOpen,
+}: Stage1AuditionProps = {}) {
   const router = useRouter()
-  const [activeEngine, setActiveEngine] = React.useState<"bezier" | "spring">(
-    "bezier"
-  )
-  const [activePresetId, setActivePresetId] = React.useState<string>("ease")
-  const [customCurves, setCustomCurves] = React.useState<CustomEase[]>(
-    INITIAL_CUSTOM_CURVES
-  )
-  const [navStack, setNavStack] = React.useState<StackLevel>({ level: 0 })
-  const [activeScenarioKey, setActiveScenarioKey] =
-    React.useState<ArchetypeKey>("button")
+  // Column 1 & Column 2: Persistent Workstation Ergonomics (Zustand + LocalStorage + Cookie)
+  const {
+    activeEngine,
+    setActiveEngine,
+    activePresetId,
+    setActivePresetId,
+    customCurves,
+    setCustomCurves,
+    navStack,
+    setNavStack,
+    isTimelineOpen: storeIsTimelineOpen,
+    setIsTimelineOpen,
+    viewportMode,
+    setViewportMode,
+    previewWidth,
+    setPreviewWidth,
+    activeScenarioKey,
+    setActiveScenarioKey,
+    playbackSpeed,
+    setPlaybackSpeed,
+    isLooping,
+    setIsLooping,
+    isReducedMotion,
+    setIsReducedMotion,
+  } = useStage1Store()
+
+  // Prioritize server cookie on initial render to guarantee zero FOUC / zero layout shift
+  const isMounted = useMounted()
+  const isTimelineOpen = isMounted
+    ? storeIsTimelineOpen
+    : (initialTimelineOpen ?? storeIsTimelineOpen)
+
+  // Column 3 (Right Flank): Deferred to next phase
   const [compareQueue, setCompareQueue] = React.useState<string[]>([])
   const [exportFramework, setExportFramework] = React.useState<
     "CSS" | "Tailwind" | "Motion" | "SwiftUI"
   >("CSS")
   const [hasCopiedToken, setHasCopiedToken] = React.useState(false)
 
-  // Column 2: Center Stage Runtime States
-  const [previewWidth, setPreviewWidth] = React.useState<number | string>(
-    "100%"
-  )
-  const [viewportMode, setViewportMode] =
-    React.useState<ViewportMode>("desktop")
-  // Human-centered playback: calm at rest by default (zero fatigue)
+  // Column 2 Runtime Playback: Strictly ephemeral (always calm at rest on load)
   const [isPlaying, setIsPlaying] = React.useState<boolean>(false)
-  const [isTimelineOpen, setIsTimelineOpen] = React.useState<boolean>(false)
-  const [isLooping, setIsLooping] = React.useState<boolean>(false)
-  const [playbackSpeed, setPlaybackSpeed] = React.useState<number>(1)
   const [scrubProgress, setScrubProgress] = React.useState<number>(100)
   const scrubProgressRef = React.useRef(scrubProgress)
 
@@ -76,7 +92,6 @@ export function Stage1Audition() {
     scrubProgressRef.current = scrubProgress
   }, [scrubProgress])
   const [isScrubbing, setIsScrubbing] = React.useState<boolean>(false)
-  const [isReducedMotion, setIsReducedMotion] = React.useState<boolean>(false)
   const [animKey, setAnimKey] = React.useState<number>(0)
 
   // Interactive Tactile Button States
@@ -102,12 +117,15 @@ export function Stage1Audition() {
     setIsPlaying(true)
   }, [])
 
-  const handleViewportChange = React.useCallback((mode: ViewportMode) => {
-    setViewportMode(mode)
-    if (mode === "desktop") setPreviewWidth("100%")
-    if (mode === "tablet") setPreviewWidth(768)
-    if (mode === "mobile") setPreviewWidth(375)
-  }, [])
+  const handleViewportChange = React.useCallback(
+    (mode: ViewportMode) => {
+      setViewportMode(mode)
+      if (mode === "desktop") setPreviewWidth("100%")
+      if (mode === "tablet") setPreviewWidth(768)
+      if (mode === "mobile") setPreviewWidth(375)
+    },
+    [setViewportMode, setPreviewWidth]
+  )
 
   const resolveEase = React.useCallback(
     (id: string): EaseDossier | undefined => {
@@ -280,7 +298,7 @@ export function Stage1Audition() {
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [router, toggleCompareQueue])
+  }, [router, toggleCompareQueue, setIsTimelineOpen, setNavStack])
 
   React.useEffect(() => {
     if (!isPlaying || isScrubbing) return
