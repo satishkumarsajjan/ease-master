@@ -69,6 +69,8 @@ export function Stage1Audition({
     setIsLooping,
     isReducedMotion,
     setIsReducedMotion,
+    compareQueue,
+    setCompareQueue,
   } = useStage1Store()
 
   // Prioritize server cookie on initial render to guarantee zero FOUC / zero layout shift
@@ -77,8 +79,7 @@ export function Stage1Audition({
     ? storeIsTimelineOpen
     : (initialTimelineOpen ?? storeIsTimelineOpen)
 
-  // Column 3 (Right Flank): Deferred to next phase
-  const [compareQueue, setCompareQueue] = React.useState<string[]>([])
+  // Column 3 Export Framework Selection
   const [exportFramework, setExportFramework] = React.useState<
     "CSS" | "Tailwind" | "Motion" | "SwiftUI"
   >("CSS")
@@ -105,12 +106,9 @@ export function Stage1Audition({
       if (prev.includes(activePresetId)) {
         return prev.filter((id) => id !== activePresetId)
       }
-      if (prev.length >= 3) {
-        return [...prev.slice(1), activePresetId]
-      }
       return [...prev, activePresetId]
     })
-  }, [activePresetId])
+  }, [activePresetId, setCompareQueue])
 
   const triggerSingleAnimation = React.useCallback(() => {
     setScrubProgress(0)

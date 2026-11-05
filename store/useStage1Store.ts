@@ -53,6 +53,9 @@ interface Stage1Store {
   isLooping: boolean
   isReducedMotion: boolean
 
+  // Column 3 (Right Flank) Persistent Ergonomics
+  compareQueue: string[]
+
   // Column 1 Actions
   setActiveEngine: (engine: "bezier" | "spring") => void
   setActivePresetId: (id: string) => void
@@ -69,6 +72,9 @@ interface Stage1Store {
   setPlaybackSpeed: (speed: number) => void
   setIsLooping: (looping: boolean | ((prev: boolean) => boolean)) => void
   setIsReducedMotion: (reduced: boolean | ((prev: boolean) => boolean)) => void
+
+  // Column 3 Actions
+  setCompareQueue: (updater: string[] | ((prev: string[]) => string[])) => void
 }
 
 export const useStage1Store = create<Stage1Store>()(
@@ -94,6 +100,9 @@ export const useStage1Store = create<Stage1Store>()(
       playbackSpeed: getInitialPersistedState("playbackSpeed", 1),
       isLooping: getInitialPersistedState("isLooping", false),
       isReducedMotion: getInitialPersistedState("isReducedMotion", false),
+
+      // --- Column 3 Defaults ---
+      compareQueue: getInitialPersistedState("compareQueue", []),
 
       // --- Column 1 Setters ---
       setActiveEngine: (activeEngine) => set({ activeEngine }),
@@ -143,11 +152,20 @@ export const useStage1Store = create<Stage1Store>()(
               ? updater(state.isReducedMotion)
               : updater,
         })),
+
+      // --- Column 3 Setters ---
+      setCompareQueue: (updater) =>
+        set((state) => ({
+          compareQueue:
+            typeof updater === "function"
+              ? updater(state.compareQueue)
+              : updater,
+        })),
     }),
     {
       name: "satisium-ease-stage1-v1",
       storage: createJSONStorage(() => localStorage),
-      // Only persist Column 1 and Column 2 deliberate setup
+      // Persist deliberate workstation setup
       partialize: (state) => ({
         activeEngine: state.activeEngine,
         activePresetId: state.activePresetId,
@@ -160,6 +178,7 @@ export const useStage1Store = create<Stage1Store>()(
         playbackSpeed: state.playbackSpeed,
         isLooping: state.isLooping,
         isReducedMotion: state.isReducedMotion,
+        compareQueue: state.compareQueue,
       }),
     }
   )
