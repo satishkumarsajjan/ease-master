@@ -18,6 +18,7 @@ import { PreviewTheater } from "./stage-1/center-stage/preview-theater"
 import { TimelineConsole } from "./stage-1/center-stage/timeline-console"
 import { ExportSlab } from "./stage-1/right-flank/export-slab"
 import { CompareQueueSlab } from "./stage-1/right-flank/compare-queue-slab"
+import { SponsorAdSlab } from "./stage-1/right-flank/sponsor-ad-slab"
 import { useStage1Store } from "@/store/useStage1Store"
 import { useMounted } from "@/hooks/use-mounted"
 
@@ -443,7 +444,7 @@ export function Stage1Audition({
       </main>
 
       {/* =====================================================================
-          RIGHT FLANK: 300px Fixed Width (Blocks 7 & 8)
+          RIGHT FLANK: 300px Fixed Width (Blocks 7, 8 & 9)
           ===================================================================== */}
       <aside className="flex w-[300px] shrink-0 flex-col gap-2">
         <ExportSlab
@@ -463,6 +464,8 @@ export function Stage1Audition({
           toggleCompareQueue={toggleCompareQueue}
           resolveEase={resolveEase}
         />
+
+        <SponsorAdSlab />
       </aside>
     </div>
   )
