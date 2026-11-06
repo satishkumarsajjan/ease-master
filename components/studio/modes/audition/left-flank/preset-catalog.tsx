@@ -7,6 +7,8 @@ import {
   Search01Icon,
   Cancel01Icon,
   PlusSignIcon,
+  Delete02Icon,
+  Edit02Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { MiniGraph } from "@/components/ui/mini-graph"
@@ -30,19 +32,45 @@ export function PresetCatalog() {
   const selectEase = useStudioStore((s) => s.selectEase)
   const setNavStack = useStudioStore((s) => s.setNavStack)
   const forkCurve = useStudioStore((s) => s.forkCurve)
+  const forkFromCustom = useStudioStore((s) => s.forkFromCustom)
+  const promoteVariantToRoot = useStudioStore((s) => s.promoteVariantToRoot)
   const addVariant = useStudioStore((s) => s.addVariant)
   const addFlavor = useStudioStore((s) => s.addFlavor)
+  const renameCurve = useStudioStore((s) => s.renameCurve)
+  const deleteCustomCurve = useStudioStore((s) => s.deleteCustomCurve)
+  const deleteVariant = useStudioStore((s) => s.deleteVariant)
+  const deleteFlavor = useStudioStore((s) => s.deleteFlavor)
 
   const [searchQuery, setSearchQuery] = React.useState<string>("")
   const [catalogFilter, setCatalogFilter] = React.useState<"all" | "popular">(
     "all"
   )
 
-  const activeDossier = React.useMemo(() => {
-    return navStack.level === 1
+  const [isEditingTitle, setIsEditingTitle] = React.useState(false)
+  const [titleEditValue, setTitleEditValue] = React.useState("")
+
+  const [isEditingVariantTitle, setIsEditingVariantTitle] =
+    React.useState(false)
+  const [variantTitleEditValue, setVariantTitleEditValue] = React.useState("")
+
+  const handleSaveTitle = () => {
+    if (activeDossier && titleEditValue.trim()) {
+      renameCurve(activeDossier.id, titleEditValue)
+    }
+    setIsEditingTitle(false)
+  }
+
+  const handleSaveVariantTitle = () => {
+    if (currentVariant && variantTitleEditValue.trim()) {
+      renameCurve(currentVariant.id, variantTitleEditValue)
+    }
+    setIsEditingVariantTitle(false)
+  }
+
+  const activeDossier =
+    navStack.level === 1
       ? resolveEase(navStack.curveId, customCurves)
       : undefined
-  }, [navStack, customCurves])
 
   const currentCurve =
     navStack.level !== 0
@@ -76,15 +104,23 @@ export function PresetCatalog() {
     const maxScroll = scrollHeight - clientHeight
     const hasOverflow = maxScroll > 2
 
-    setDetailScrollState({
-      canScrollUp: hasOverflow && scrollTop > 2,
-      canScrollDown: hasOverflow && scrollTop < maxScroll - 2,
+    const canScrollUp = hasOverflow && scrollTop > 2
+    const canScrollDown = hasOverflow && scrollTop < maxScroll - 2
+
+    setDetailScrollState((prev) => {
+      if (
+        prev.canScrollUp === canScrollUp &&
+        prev.canScrollDown === canScrollDown
+      ) {
+        return prev
+      }
+      return { canScrollUp, canScrollDown }
     })
   }, [])
 
   React.useEffect(() => {
     updateDetailScrollState()
-  }, [activeDossier, navStack, updateDetailScrollState])
+  }, [navStack, updateDetailScrollState])
 
   React.useEffect(() => {
     const el = detailScrollRef.current
@@ -275,6 +311,19 @@ export function PresetCatalog() {
                           {curve.name}
                         </span>
                       </div>
+                    </button>
+
+                    {/* Delete Custom Curve on Hover (Top-Left of Inner Box) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteCustomCurve(curve.id)
+                      }}
+                      title={`Delete ${curve.name}`}
+                      className="absolute top-1.5 left-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                    >
+                      <HugeiconsIcon icon={Delete02Icon} className="size-2.5" />
                     </button>
 
                     {/* Quick Inspect Button on Hover (Top-Right of Inner Box) */}
@@ -580,9 +629,22 @@ export function PresetCatalog() {
                 />
                 <span className="font-heading">Presets</span>
               </button>
-              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
-                {activeDossier.duration}ms
-              </span>
+
+              <div className="flex items-center gap-1.5">
+                {activeDossier.isCustom && (
+                  <button
+                    type="button"
+                    onClick={() => deleteCustomCurve(activeDossier.id)}
+                    title={`Delete ${activeDossier.name}`}
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-[6px] bg-secondary text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
+                  </button>
+                )}
+                <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                  {activeDossier.duration}ms
+                </span>
+              </div>
             </div>
 
             {/* TIER 2: SCROLLABLE MIDDLE RUNWAY with dynamic CSS alpha mask */}
@@ -606,9 +668,55 @@ export function PresetCatalog() {
               {/* Title, Taxonomy & Description */}
               <div className="flex shrink-0 flex-col gap-1 text-left">
                 <div className="flex flex-col gap-0.5">
-                  <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
-                    {activeDossier.name}
-                  </h3>
+                  {isEditingTitle && activeDossier.isCustom ? (
+                    <input
+                      autoFocus
+                      value={titleEditValue}
+                      onChange={(e) => setTitleEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveTitle()
+                        if (e.key === "Escape") setIsEditingTitle(false)
+                      }}
+                      onBlur={handleSaveTitle}
+                      className="h-6 w-full rounded-[6px] bg-muted px-2 font-heading text-sm font-semibold text-foreground focus:outline-none"
+                    />
+                  ) : (
+                    <div className="group/title flex items-center gap-1.5">
+                      <h3
+                        onClick={() => {
+                          if (activeDossier.isCustom) {
+                            setTitleEditValue(activeDossier.name)
+                            setIsEditingTitle(true)
+                          }
+                        }}
+                        className={cn(
+                          "font-heading text-sm font-semibold tracking-tight text-foreground",
+                          activeDossier.isCustom &&
+                            "cursor-pointer underline-offset-4 hover:underline"
+                        )}
+                        title={
+                          activeDossier.isCustom
+                            ? "Click to rename"
+                            : activeDossier.name
+                        }
+                      >
+                        {activeDossier.name}
+                      </h3>
+                      {activeDossier.isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTitleEditValue(activeDossier.name)
+                            setIsEditingTitle(true)
+                          }}
+                          title="Rename preset"
+                          className="flex size-4 cursor-pointer items-center justify-center text-muted-foreground opacity-0 transition-opacity group-hover/title:opacity-100 hover:text-foreground"
+                        >
+                          <HugeiconsIcon icon={Edit02Icon} className="size-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <p className="truncate font-sans text-[11px] text-muted-foreground">
                     {activeDossier.engine === "bezier"
                       ? "Cubic Bézier"
@@ -848,6 +956,21 @@ export function PresetCatalog() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
+                              deleteVariant(activeDossier.id, v.id)
+                            }}
+                            title={`Delete ${v.name}`}
+                            className="absolute top-2 left-2 z-10 flex size-4.5 cursor-pointer items-center justify-center rounded-[5px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                          >
+                            <HugeiconsIcon
+                              icon={Delete02Icon}
+                              className="size-2.5"
+                            />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
                               setNavStack({
                                 level: 2,
                                 curveId: activeDossier.id,
@@ -891,8 +1014,17 @@ export function PresetCatalog() {
             </div>
 
             {/* TIER 3: PINNED BOTTOM ACTION CTA (shrink-0) */}
-            {!activeDossier.isCustom && (
-              <div className="shrink-0 border-t border-muted bg-background pt-2">
+            <div className="shrink-0 border-t border-muted bg-background pt-2">
+              {activeDossier.isCustom ? (
+                <button
+                  type="button"
+                  onClick={() => forkFromCustom(activeDossier.id)}
+                  className="flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
+                >
+                  <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+                  <span>Fork as New Preset</span>
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={() => forkCurve(activeDossier.id)}
@@ -901,8 +1033,8 @@ export function PresetCatalog() {
                   <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
                   <span>Customize Parameters</span>
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -936,16 +1068,63 @@ export function PresetCatalog() {
                   />
                   <span className="font-heading">{currentCurve.name}</span>
                 </button>
-                <span className="font-sans text-[11px] font-medium text-muted-foreground">
-                  {currentVariant.duration}ms
-                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      deleteVariant(currentCurve.id, currentVariant.id)
+                    }
+                    title={`Delete ${currentVariant.name}`}
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-[6px] bg-secondary text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
+                  </button>
+                  <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                    {currentVariant.duration}ms
+                  </span>
+                </div>
               </div>
 
               {/* Title & Origin Pedigree */}
               <div className="flex shrink-0 flex-col gap-0.5">
-                <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
-                  {currentVariant.name}
-                </h3>
+                {isEditingVariantTitle ? (
+                  <input
+                    autoFocus
+                    value={variantTitleEditValue}
+                    onChange={(e) => setVariantTitleEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveVariantTitle()
+                      if (e.key === "Escape") setIsEditingVariantTitle(false)
+                    }}
+                    onBlur={handleSaveVariantTitle}
+                    className="h-6 w-full rounded-[6px] bg-muted px-2 font-heading text-sm font-semibold text-foreground focus:outline-none"
+                  />
+                ) : (
+                  <div className="group/vtitle flex items-center gap-1.5">
+                    <h3
+                      onClick={() => {
+                        setVariantTitleEditValue(currentVariant.name)
+                        setIsEditingVariantTitle(true)
+                      }}
+                      className="cursor-pointer font-heading text-sm font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
+                      title="Click to rename"
+                    >
+                      {currentVariant.name}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVariantTitleEditValue(currentVariant.name)
+                        setIsEditingVariantTitle(true)
+                      }}
+                      title="Rename variant"
+                      className="flex size-4 cursor-pointer items-center justify-center text-muted-foreground opacity-0 transition-opacity group-hover/vtitle:opacity-100 hover:text-foreground"
+                    >
+                      <HugeiconsIcon icon={Edit02Icon} className="size-3" />
+                    </button>
+                  </div>
+                )}
                 <p className="truncate font-sans text-[11px] text-muted-foreground">
                   Branch of {currentCurve.name} · Kinetic Variant
                 </p>
@@ -1017,6 +1196,26 @@ export function PresetCatalog() {
                           </span>
                         </div>
                       </button>
+
+                      {/* Delete Flavor on Hover (Top-Left of Flavor Tile) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteFlavor(
+                            currentCurve.id,
+                            currentVariant.id,
+                            sv.id
+                          )
+                        }}
+                        title={`Delete ${sv.name}`}
+                        className="absolute top-2 left-2 z-10 flex size-4.5 cursor-pointer items-center justify-center rounded-[5px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          className="size-2.5"
+                        />
+                      </button>
                     </div>
                   )
                 })}
@@ -1041,6 +1240,20 @@ export function PresetCatalog() {
                   </div>
                 </button>
               </div>
+            </div>
+
+            {/* TIER 3: PROMOTE VARIANT TO STANDALONE PRESET */}
+            <div className="mt-auto shrink-0 border-t border-muted bg-background pt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  promoteVariantToRoot(currentCurve.id, currentVariant.id)
+                }
+                className="flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
+              >
+                <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" />
+                <span>Promote to Standalone Preset</span>
+              </button>
             </div>
           </div>
         )}
