@@ -262,4 +262,122 @@ describe("Studio Zustand Store", () => {
     expect(document.cookie).toContain("ease_timeline_open=true")
     expect(document.cookie).toContain("ease_session=")
   })
+
+  it("renames custom curves, variants, and flavors recursively", () => {
+    const store = createStudioStore()
+    // 1. Rename root custom curve
+    store.getState().renameCurve("modal-sheet", "Renamed Modal")
+    expect(
+      findCustomCurve("modal-sheet", store.getState().customCurves)?.name
+    ).toBe("Renamed Modal")
+
+    // 2. Rename variant
+    store.getState().renameCurve("modal-sheet-exit", "Renamed Exit")
+    const variant = findCustomCurve(
+      "modal-sheet-exit",
+      store.getState().customCurves
+    )
+    expect(variant?.name).toBe("Renamed Exit")
+
+    // 3. Rename flavor
+    store
+      .getState()
+      .renameCurve("modal-sheet-exit-swift", "Ultra Swift Dismissal")
+    const flavor = findCustomCurve(
+      "modal-sheet-exit-swift",
+      store.getState().customCurves
+    )
+    expect(flavor?.name).toBe("Ultra Swift Dismissal")
+  })
+
+  it("deletes a root custom curve and falls back gracefully", () => {
+    const store = createStudioStore()
+    store.getState().selectEase("modal-sheet", { openSlide: true })
+    expect(store.getState().navStack).toEqual({
+      level: 1,
+      curveId: "modal-sheet",
+    })
+
+    store.getState().deleteCustomCurve("modal-sheet")
+    const state = store.getState()
+    // Should no longer contain modal-sheet
+    expect(state.customCurves.some((c) => c.id === "modal-sheet")).toBe(false)
+    // Active curve should have fallen back to next available custom curve or default
+    expect(state.activeCurveId).not.toBe("modal-sheet")
+    // navStack should have reset to level 0
+    expect(state.navStack).toEqual({ level: 0 })
+  })
+
+  it("deletes a variant and falls back to parent curve", () => {
+    const store = createStudioStore()
+    store.getState().selectEase("modal-sheet-exit", { openSlide: false })
+    store
+      .getState()
+      .setNavStack({
+        level: 2,
+        curveId: "modal-sheet",
+        variantId: "modal-sheet-exit",
+      })
+
+    store.getState().deleteVariant("modal-sheet", "modal-sheet-exit")
+    const state = store.getState()
+    const parent = findCustomCurve("modal-sheet", state.customCurves)
+    expect(parent?.variants?.some((v) => v.id === "modal-sheet-exit")).toBe(
+      false
+    )
+    // Active curve falls back to parent
+    expect(state.activeCurveId).toBe("modal-sheet")
+    // navStack should retreat to Level 1
+    expect(state.navStack).toEqual({ level: 1, curveId: "modal-sheet" })
+  })
+
+  it("deletes a flavor and falls back to parent variant", () => {
+    const store = createStudioStore()
+    store.getState().selectEase("modal-sheet-exit-swift")
+    expect(store.getState().activeCurveId).toBe("modal-sheet-exit-swift")
+
+    store
+      .getState()
+      .deleteFlavor("modal-sheet", "modal-sheet-exit", "modal-sheet-exit-swift")
+    const state = store.getState()
+    const variant = findCustomCurve("modal-sheet-exit", state.customCurves)
+    expect(
+      variant?.variants?.some((f) => f.id === "modal-sheet-exit-swift")
+    ).toBe(false)
+    // Active curve falls back to parent variant
+    expect(state.activeCurveId).toBe("modal-sheet-exit")
+  })
+
+  it("forks a custom curve into a new peer root preset", () => {
+    const store = createStudioStore()
+    const newId = store
+      .getState()
+      .forkFromCustom("modal-sheet", "Drawer Physics Archetype")
+    const state = store.getState()
+    expect(state.activeCurveId).toBe(newId)
+    const newCurve = findCustomCurve(newId, state.customCurves)
+    expect(newCurve).toBeDefined()
+    expect(newCurve?.name).toBe("Drawer Physics Archetype")
+    expect(newCurve?.parentPreset).toBe("Modal Sheet")
+    expect(state.navStack).toEqual({ level: 1, curveId: newId })
+  })
+
+  it("promotes a variant to a standalone root preset on Level 0", () => {
+    const store = createStudioStore()
+    const newId = store
+      .getState()
+      .promoteVariantToRoot(
+        "modal-sheet",
+        "modal-sheet-exit",
+        "Standalone Exit"
+      )
+    const state = store.getState()
+    expect(state.activeCurveId).toBe(newId)
+    // Promoted curve is a root curve in customCurves
+    expect(state.customCurves.some((c) => c.id === newId)).toBe(true)
+    const promoted = findCustomCurve(newId, state.customCurves)
+    expect(promoted?.name).toBe("Standalone Exit")
+    expect(promoted?.parentPreset).toContain("Modal Sheet")
+    expect(state.navStack).toEqual({ level: 1, curveId: newId })
+  })
 })

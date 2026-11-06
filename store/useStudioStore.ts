@@ -73,12 +73,26 @@ export interface StudioState {
   clearCompareQueue: () => void
   setBenchmarkTarget: (id: string | null) => void
   forkCurve: (parentPresetId: string, customName?: string) => string
+  forkFromCustom: (curveId: string, customName?: string) => string
+  promoteVariantToRoot: (
+    parentCurveId: string,
+    variantId: string,
+    newName?: string
+  ) => string
   addVariant: (parentCurveId: string, variantName?: string) => string
   addFlavor: (
     parentCurveId: string,
     variantId: string,
     flavorName?: string
   ) => string
+  renameCurve: (id: string, newName: string) => void
+  deleteCustomCurve: (id: string) => void
+  deleteVariant: (parentCurveId: string, variantId: string) => void
+  deleteFlavor: (
+    parentCurveId: string,
+    variantId: string,
+    flavorId: string
+  ) => void
   updateCustomCurve: (updatedCurve: CustomEase) => void
 }
 
@@ -453,6 +467,227 @@ export const createStudioStore = (options?: CreateStudioStoreOptions) => {
           set((state) => ({
             customCurves: updateRecursive(state.customCurves),
           }))
+        },
+
+        forkFromCustom: (curveId, customName) => {
+          return get().forkCurve(curveId, customName)
+        },
+
+        promoteVariantToRoot: (parentCurveId, variantId, newName) => {
+          const parent = findCustomCurve(parentCurveId, get().customCurves)
+          const variant = parent?.variants?.find((v) => v.id === variantId)
+          if (!parent || !variant) return variantId
+
+          const newId = `custom-${Date.now().toString(36)}`
+          const name = newName || `${variant.name}`
+          const promotedCurve: CustomEase = {
+            id: newId,
+            name,
+            parentPreset: `${parent.name} (Variant)`,
+            engine: variant.engine,
+            values: variant.values,
+            bezier: variant.bezier,
+            spring: variant.spring,
+            duration: variant.duration,
+            desc: variant.desc || `Promoted from ${parent.name} variant`,
+            guidance: parent.guidance,
+            targetSettle: parent.targetSettle,
+            useCases: parent.useCases ? [...parent.useCases] : [],
+            variants: variant.variants ? [...variant.variants] : [],
+          }
+
+          set((state) => ({
+            customCurves: [promotedCurve, ...state.customCurves],
+            activeCurveId: newId,
+            activeEngine: promotedCurve.engine,
+            navStack: { level: 1, curveId: newId },
+            isPlaying: true,
+            scrubProgress: 0,
+            animKey: state.animKey + 1,
+          }))
+
+          syncSessionCookie({ curve: newId, engine: promotedCurve.engine })
+          return newId
+        },
+
+        renameCurve: (id, newName) => {
+          const trimmed = newName.trim()
+          if (!trimmed) return
+
+          const renameRecursive = (list: CustomEase[]): CustomEase[] => {
+            return list.map((c) => {
+              if (c.id === id) {
+                return { ...c, name: trimmed }
+              }
+              if (c.variants && c.variants.length > 0) {
+                return {
+                  ...c,
+                  variants: renameRecursive(c.variants),
+                }
+              }
+              return c
+            })
+          }
+
+          set((state) => ({
+            customCurves: renameRecursive(state.customCurves),
+          }))
+        },
+
+        deleteCustomCurve: (id) => {
+          const collectCurveIds = (curve: CustomEase): string[] => {
+            const ids = [curve.id]
+            if (curve.variants && curve.variants.length > 0) {
+              for (const v of curve.variants) {
+                ids.push(...collectCurveIds(v))
+              }
+            }
+            return ids
+          }
+
+          const targetCurve = get().customCurves.find((c) => c.id === id)
+          const deletedIds = targetCurve ? collectCurveIds(targetCurve) : [id]
+          const nextCustom = get().customCurves.filter((c) => c.id !== id)
+
+          let nextActiveId = get().activeCurveId
+          let nextActiveEngine = get().activeEngine
+
+          if (deletedIds.includes(nextActiveId)) {
+            if (nextCustom.length > 0) {
+              nextActiveId = nextCustom[0].id
+              nextActiveEngine = nextCustom[0].engine
+            } else {
+              nextActiveId = "modal-sheet"
+              nextActiveEngine = "bezier"
+            }
+            syncSessionCookie({ curve: nextActiveId, engine: nextActiveEngine })
+          }
+
+          let nextNavStack = get().navStack
+          if (nextNavStack.level !== 0 && nextNavStack.curveId === id) {
+            nextNavStack = { level: 0 }
+          }
+
+          set({
+            customCurves: nextCustom,
+            activeCurveId: nextActiveId,
+            activeEngine: nextActiveEngine,
+            navStack: nextNavStack,
+          })
+        },
+
+        deleteVariant: (parentCurveId, variantId) => {
+          const collectCurveIds = (curve: CustomEase): string[] => {
+            const ids = [curve.id]
+            if (curve.variants && curve.variants.length > 0) {
+              for (const v of curve.variants) {
+                ids.push(...collectCurveIds(v))
+              }
+            }
+            return ids
+          }
+
+          const parent = findCustomCurve(parentCurveId, get().customCurves)
+          const targetVariant = parent?.variants?.find(
+            (v) => v.id === variantId
+          )
+          const deletedIds = targetVariant
+            ? collectCurveIds(targetVariant)
+            : [variantId]
+
+          const updateRecursive = (list: CustomEase[]): CustomEase[] => {
+            return list.map((c) => {
+              if (c.id === parentCurveId) {
+                return {
+                  ...c,
+                  variants: (c.variants || []).filter(
+                    (v) => v.id !== variantId
+                  ),
+                }
+              }
+              if (c.variants && c.variants.length > 0) {
+                return {
+                  ...c,
+                  variants: updateRecursive(c.variants),
+                }
+              }
+              return c
+            })
+          }
+
+          const nextCustom = updateRecursive(get().customCurves)
+
+          let nextActiveId = get().activeCurveId
+          let nextActiveEngine = get().activeEngine
+
+          if (deletedIds.includes(nextActiveId)) {
+            const parentDossier = resolveEase(parentCurveId, nextCustom)
+            nextActiveId = parentDossier.id
+            nextActiveEngine = parentDossier.engine
+            syncSessionCookie({ curve: nextActiveId, engine: nextActiveEngine })
+          }
+
+          let nextNavStack = get().navStack
+          if (
+            nextNavStack.level === 2 &&
+            nextNavStack.variantId === variantId
+          ) {
+            nextNavStack = { level: 1, curveId: parentCurveId }
+          }
+
+          set({
+            customCurves: nextCustom,
+            activeCurveId: nextActiveId,
+            activeEngine: nextActiveEngine,
+            navStack: nextNavStack,
+          })
+        },
+
+        deleteFlavor: (parentCurveId, variantId, flavorId) => {
+          const updateRecursive = (list: CustomEase[]): CustomEase[] => {
+            return list.map((c) => {
+              if (c.id === parentCurveId) {
+                return {
+                  ...c,
+                  variants: (c.variants || []).map((v) =>
+                    v.id === variantId
+                      ? {
+                          ...v,
+                          variants: (v.variants || []).filter(
+                            (f) => f.id !== flavorId
+                          ),
+                        }
+                      : v
+                  ),
+                }
+              }
+              if (c.variants && c.variants.length > 0) {
+                return {
+                  ...c,
+                  variants: updateRecursive(c.variants),
+                }
+              }
+              return c
+            })
+          }
+
+          const nextCustom = updateRecursive(get().customCurves)
+
+          let nextActiveId = get().activeCurveId
+          let nextActiveEngine = get().activeEngine
+
+          if (nextActiveId === flavorId) {
+            const variantDossier = resolveEase(variantId, nextCustom)
+            nextActiveId = variantDossier.id
+            nextActiveEngine = variantDossier.engine
+            syncSessionCookie({ curve: nextActiveId, engine: nextActiveEngine })
+          }
+
+          set({
+            customCurves: nextCustom,
+            activeCurveId: nextActiveId,
+            activeEngine: nextActiveEngine,
+          })
         },
       }),
       {
