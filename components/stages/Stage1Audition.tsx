@@ -342,7 +342,7 @@ export function Stage1Audition({
       {/* =====================================================================
           LEFT FLANK: 280px Hug-Fill-Hug (Blocks 1, 2, 3)
           ===================================================================== */}
-      <aside className="flex w-[280px] shrink-0 flex-col gap-2">
+      <aside className="flex h-full min-h-0 w-[280px] shrink-0 flex-col gap-2">
         <BrandSlab />
         <PresetCatalog
           activeEngine={activeEngine}

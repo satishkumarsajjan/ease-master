@@ -19,6 +19,7 @@ import {
   SPRING_FAMILIES,
   POPULAR_PRESET_IDS,
 } from "../stage-1-curves"
+import { PresetCurveStage } from "./preset-curve-stage"
 
 interface PresetCatalogProps {
   activeEngine: "bezier" | "spring"
@@ -50,8 +51,9 @@ export function PresetCatalog({
     "all"
   )
 
-  const activeDossier =
-    navStack.level === 1 ? resolveEase(navStack.curveId) : undefined
+  const activeDossier = React.useMemo(() => {
+    return navStack.level === 1 ? resolveEase(navStack.curveId) : undefined
+  }, [navStack, resolveEase])
 
   const currentCurve =
     navStack.level !== 0
@@ -66,6 +68,74 @@ export function PresetCatalog({
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const [isScrolledTop, setIsScrolledTop] = React.useState(false)
   const [isScrolledBottom, setIsScrolledBottom] = React.useState(false)
+
+  // Level 1 detail slide dynamic scroll mask state
+  const detailScrollRef = React.useRef<HTMLDivElement>(null)
+  const [detailScrollState, setDetailScrollState] = React.useState<{
+    canScrollUp: boolean
+    canScrollDown: boolean
+  }>({
+    canScrollUp: false,
+    canScrollDown: false,
+  })
+
+  const updateDetailScrollState = React.useCallback(() => {
+    const el = detailScrollRef.current
+    if (!el) return
+
+    const { scrollTop, scrollHeight, clientHeight } = el
+    const maxScroll = scrollHeight - clientHeight
+    const hasOverflow = maxScroll > 2
+
+    setDetailScrollState({
+      canScrollUp: hasOverflow && scrollTop > 2,
+      canScrollDown: hasOverflow && scrollTop < maxScroll - 2,
+    })
+  }, [])
+
+  // Re-check scroll metrics whenever active dossier or navigation stack changes
+  React.useEffect(() => {
+    updateDetailScrollState()
+  }, [activeDossier, navStack, updateDetailScrollState])
+
+  // Observe container resizes (e.g. window resize or layout flex)
+  React.useEffect(() => {
+    const el = detailScrollRef.current
+    if (!el) return
+
+    updateDetailScrollState()
+
+    const ro = new ResizeObserver(() => {
+      updateDetailScrollState()
+    })
+    ro.observe(el)
+
+    return () => ro.disconnect()
+  }, [updateDetailScrollState])
+
+  // Dynamic alpha mask: fades edges only when scrollable content extends beyond view
+  const detailMaskStyle = React.useMemo<React.CSSProperties>(() => {
+    const { canScrollUp, canScrollDown } = detailScrollState
+    if (!canScrollUp && !canScrollDown) {
+      return {}
+    }
+
+    const fadeSize = "16px"
+
+    let mask = ""
+    if (canScrollUp && canScrollDown) {
+      mask = `linear-gradient(to bottom, transparent 0px, black ${fadeSize}, black calc(100% - ${fadeSize}), transparent 100%)`
+    } else if (canScrollUp) {
+      mask = `linear-gradient(to bottom, transparent 0px, black ${fadeSize}, black 100%)`
+    } else if (canScrollDown) {
+      mask = `linear-gradient(to bottom, black 0%, black calc(100% - ${fadeSize}), transparent 100%)`
+    }
+
+    return {
+      WebkitMaskImage: mask,
+      maskImage: mask,
+    }
+  }, [detailScrollState])
 
   const checkScroll = React.useCallback(() => {
     if (!scrollRef.current) return
@@ -622,225 +692,344 @@ export function PresetCatalog({
         )}
       >
         {activeDossier && (
-          <div className="flex h-full flex-col gap-3">
-            {/* TOP: STREAMLINED ESSENTIAL KINETIC DOSSIER */}
-            <div className="flex shrink-0 flex-col gap-2.5">
-              {/* Top Navigation Bar */}
-              <div className="flex shrink-0 items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setNavStack({ level: 0 })}
-                  className="group flex cursor-pointer items-center gap-1.5 rounded-[8px] bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
-                >
-                  <HugeiconsIcon
-                    icon={ArrowLeft01Icon}
-                    className="size-3.5 transition-transform group-hover:-translate-x-0.5"
-                  />
-                  <span className="font-heading">Library</span>
-                </button>
-                <span className="font-sans text-[11px] font-medium text-muted-foreground">
-                  {activeDossier.duration}ms
-                </span>
-              </div>
+          <div className="flex h-full min-h-0 flex-col select-none">
+            {/* TIER 1: PINNED TOP NAVIGATION BAR (shrink-0) */}
+            <div className="flex shrink-0 items-center justify-between pb-2.5">
+              <button
+                type="button"
+                onClick={() => setNavStack({ level: 0 })}
+                className="group flex cursor-pointer items-center gap-1.5 rounded-[8px] bg-secondary px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                <HugeiconsIcon
+                  icon={ArrowLeft01Icon}
+                  className="size-3.5 transition-transform group-hover:-translate-x-0.5"
+                />
+                <span className="font-heading">Presets</span>
+              </button>
+              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                {activeDossier.duration}ms
+              </span>
+            </div>
 
-              {/* Title & Origin Subtitle */}
-              <div className="flex shrink-0 flex-col gap-0.5">
-                <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
-                  {activeDossier.name}
-                </h3>
-                <p className="truncate font-sans text-[11px] text-muted-foreground">
-                  {activeDossier.kinetics.role} · {activeDossier.origin}
+            {/* TIER 2: SCROLLABLE MIDDLE RUNWAY (flex-1 min-h-0 overflow-y-auto with dynamic CSS alpha mask) */}
+            <div
+              ref={detailScrollRef}
+              data-testid="preset-detail-scroll-container"
+              onScroll={updateDetailScrollState}
+              style={detailMaskStyle}
+              className="no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5"
+            >
+              {/* 1:1 Square Kinetic Curve Stage (Self-contained high-performance stage) */}
+              <PresetCurveStage
+                key={activeDossier.id}
+                curveId={activeDossier.id}
+                engine={activeDossier.engine}
+                duration={activeDossier.duration}
+                bezier={activeDossier.bezier}
+                spring={activeDossier.spring}
+              />
+
+              {/* Title, Taxonomy & Description (Left-aligned) */}
+              <div className="flex shrink-0 flex-col gap-1 text-left">
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
+                    {activeDossier.name}
+                  </h3>
+                  <p className="truncate font-sans text-[11px] text-muted-foreground">
+                    {activeDossier.engine === "bezier"
+                      ? "Cubic Bézier"
+                      : "Physics Spring"}{" "}
+                    · {activeDossier.origin}
+                  </p>
+                </div>
+                <p className="font-sans text-xs leading-relaxed text-muted-foreground">
+                  {activeDossier.description ||
+                    activeDossier.kinetics.choreographyLaw}
                 </p>
               </div>
 
-              {/* The Single Definitive Kinetic Law (Hero Statement) */}
-              <p className="font-sans text-xs leading-relaxed text-foreground">
-                &ldquo;
-                {activeDossier.description ||
-                  activeDossier.kinetics.choreographyLaw}
-                &rdquo;
-              </p>
-
-              {/* Telemetry Card */}
-              <div className="flex flex-col gap-2 rounded-[12px] bg-muted p-3">
-                {/* Row 1: Full-width Coordinates in Monospace */}
-                <div className="font-mono text-xs font-semibold tracking-tight text-foreground">
-                  {activeDossier.values}
-                </div>
-
-                {/* Row 2: Timing Sweet Spot */}
-                <div className="flex items-center justify-between font-sans text-xs">
-                  <span className="text-muted-foreground">Sweet spot</span>
-                  <span className="font-medium text-foreground">
-                    {activeDossier.kinetics.timingSweetSpot}
-                  </span>
-                </div>
-
-                {/* Row 3: Recommended UI Habitats (Clean Natural Wrap, No Truncation) */}
-                {activeDossier.useCases &&
-                  activeDossier.useCases.length > 0 && (
-                    <div className="font-sans text-[11px] leading-relaxed text-muted-foreground">
-                      <span className="font-medium text-foreground">
-                        Best for:
-                      </span>{" "}
-                      {activeDossier.useCases.join(", ")}
-                    </div>
-                  )}
-              </div>
-            </div>
-
-            {/* BOTTOM: TACTILE SQUIRCLE VARIANTS OR KINETIC PROFILE (NO DUMB GAP) */}
-            {activeDossier.isCustom ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex shrink-0 items-center justify-between px-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-heading text-xs font-semibold text-foreground">
-                      Variants
-                    </span>
-                    <span className="rounded-[6px] bg-secondary px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
-                      {activeDossier.variants?.length ?? 0}
-                    </span>
-                  </div>
-                  <span className="font-sans text-[10px] text-muted-foreground">
-                    2x: open slide
-                  </span>
-                </div>
-
-                {/* Clean 1:1 Squircle 2-Column Grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  {(activeDossier.variants ?? []).map((v) => {
-                    const isSelected = activePresetId === v.id
-                    const subVariantCount = v.variants?.length ?? 0
-
-                    return (
-                      <div
-                        key={v.id}
-                        className="group relative flex w-full flex-col"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActivePresetId(v.id)
-                            setActiveEngine(v.engine)
-                          }}
-                          onDoubleClick={() => {
-                            setNavStack({
-                              level: 2,
-                              curveId: activeDossier.id,
-                              variantId: v.id,
-                            })
-                          }}
-                          title={`${v.name} · Click to audition · Double-click to open slide`}
-                          className={cn(
-                            "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
-                            isSelected
-                              ? "bg-foreground text-background"
-                              : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
-                          )}
-                        >
-                          {/* Inner Mini Graph Box (Clean 1:1 Squircle Screen) */}
-                          <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-2">
-                            {subVariantCount > 0 && (
-                              <span className="pointer-events-none absolute top-1.5 left-2 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
-                                +{subVariantCount}
-                              </span>
-                            )}
-
-                            <MiniGraph
-                              mode={v.engine}
-                              bezier={v.bezier}
-                              spring={v.spring}
-                              className={cn(
-                                "h-full w-full stroke-2 transition-colors",
-                                isSelected
-                                  ? "stroke-foreground"
-                                  : "stroke-muted-foreground group-hover:stroke-foreground"
-                              )}
-                            />
-                          </div>
-
-                          {/* Grounded Name Strip Snug Underneath */}
-                          <div className="flex h-5 w-full items-center justify-center px-1">
-                            <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
-                              {v.name}
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* Quick open button on hover (Top-Right of Inner Box) */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setNavStack({
-                              level: 2,
-                              curveId: activeDossier.id,
-                              variantId: v.id,
-                            })
-                          }}
-                          title={`Open ${v.name} slide`}
-                          className="absolute top-2 right-2 z-10 flex size-4.5 cursor-pointer items-center justify-center rounded-[5px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-                        >
-                          <HugeiconsIcon
-                            icon={ArrowUpRight01Icon}
-                            className="size-2.5"
-                          />
-                        </button>
-                      </div>
-                    )
-                  })}
-
-                  {/* Action Tile: + Add Variant (Clean 1:1 Squircle) */}
-                  <button
-                    type="button"
-                    onClick={handleAddVariant}
-                    title="Add variant"
-                    className="group flex w-full cursor-pointer flex-col items-center rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
-                  >
-                    <div className="relative flex aspect-square w-full items-center justify-center rounded-[9px] bg-background p-2">
-                      <HugeiconsIcon
-                        icon={PlusSignIcon}
-                        className="size-5 text-muted-foreground group-hover:text-foreground"
-                      />
-                    </div>
-                    <div className="flex h-5 w-full items-center justify-center px-1">
-                      <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
-                        + Add Variant
+              {/* Unified Property Inspector Slab */}
+              <div className="flex flex-col gap-2 rounded-[12px] bg-secondary p-3">
+                {/* Parameters: Spring (3-col) or Bézier (2-col Anchors) */}
+                {activeDossier.engine === "spring" && activeDossier.spring ? (
+                  <div className="grid grid-cols-3 divide-x divide-muted font-sans text-xs">
+                    <div className="flex flex-col items-start gap-0.5 pr-2 text-left">
+                      <span className="text-[10px] text-muted-foreground">
+                        Mass
+                      </span>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {activeDossier.spring.mass ?? 1}
                       </span>
                     </div>
-                  </button>
+                    <div className="flex flex-col items-center gap-0.5 px-2 text-center">
+                      <span className="text-[10px] text-muted-foreground">
+                        Stiffness
+                      </span>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {activeDossier.spring.stiffness}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 pl-2 text-right">
+                      <span className="text-[10px] text-muted-foreground">
+                        Damping
+                      </span>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {activeDossier.spring.damping}
+                      </span>
+                    </div>
+                  </div>
+                ) : activeDossier.bezier ? (
+                  <div className="grid grid-cols-2 divide-x divide-muted font-sans">
+                    <div className="flex flex-col items-start gap-0.5 pr-3 text-left">
+                      <span className="text-[10px] text-muted-foreground">
+                        Anchor P1
+                      </span>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {activeDossier.bezier.p1.x.toFixed(2)},{" "}
+                        {activeDossier.bezier.p1.y.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 pl-3 text-right">
+                      <span className="text-[10px] text-muted-foreground">
+                        Anchor P2
+                      </span>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {activeDossier.bezier.p2.x.toFixed(2)},{" "}
+                        {activeDossier.bezier.p2.y.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="shrink-0 text-muted-foreground">
+                      Control points
+                    </span>
+                    <span className="truncate font-mono text-xs font-medium text-foreground">
+                      {activeDossier.values}
+                    </span>
+                  </div>
+                )}
+
+                <div className="border-t border-muted" />
+
+                {/* Kinetic Telemetry Rows: Calm, Balanced Typography */}
+                <div className="flex flex-col gap-1.5 font-sans text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="shrink-0 text-muted-foreground">
+                      Sweet spot
+                    </span>
+                    <span className="truncate font-medium text-foreground">
+                      {activeDossier.kinetics.timingSweetSpot}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="shrink-0 text-muted-foreground">
+                      Motion feel
+                    </span>
+                    <span className="truncate font-medium text-foreground">
+                      {activeDossier.kinetics.role}
+                    </span>
+                  </div>
+                  {activeDossier.engine === "spring" ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="shrink-0 text-muted-foreground">
+                        Bounce
+                      </span>
+                      <span className="truncate font-medium text-foreground">
+                        {activeDossier.kinetics.settleCharacter.includes(
+                          "Zero bounce"
+                        )
+                          ? "None (0%)"
+                          : activeDossier.kinetics.settleCharacter.includes(
+                                "bounce"
+                              )
+                            ? (activeDossier.kinetics.settleCharacter.match(
+                                /~?\d+%\s*bounce/
+                              )?.[0] ?? "Subtle")
+                            : activeDossier.kinetics.settleCharacter.includes(
+                                  "rebound"
+                                )
+                              ? (activeDossier.kinetics.settleCharacter.match(
+                                  /~?\d+%\s*rebound/
+                                )?.[0] ?? "Oscillating")
+                              : "Minimal"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="shrink-0 text-muted-foreground">
+                        Deceleration
+                      </span>
+                      <span className="truncate font-medium text-foreground">
+                        {activeDossier.kinetics.settleCharacter.includes(
+                          "overshoot"
+                        )
+                          ? "Overshoot cushion"
+                          : activeDossier.kinetics.settleCharacter.includes(
+                                "friction"
+                              )
+                            ? "Asymptotic cushion"
+                            : "Symmetric ease"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-1 flex-col gap-2.5">
-                {/* Unified Physics Profile Card */}
-                <div className="flex flex-col gap-2.5 rounded-[12px] bg-muted p-3">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-sans text-[11px] font-medium text-muted-foreground">
-                      Launch impulse
-                    </span>
-                    <span className="font-sans text-xs text-foreground">
-                      {activeDossier.kinetics.launchVelocity}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-sans text-[11px] font-medium text-muted-foreground">
-                      Settle deceleration
-                    </span>
-                    <span className="font-sans text-xs text-foreground">
-                      {activeDossier.kinetics.settleCharacter}
-                    </span>
+
+              {/* Recommended For Use Cases */}
+              {activeDossier.useCases && activeDossier.useCases.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="font-sans text-[10px] font-medium text-muted-foreground">
+                    Recommended for
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {activeDossier.useCases.map((uc) => (
+                      <span
+                        key={uc}
+                        className="rounded-[6px] bg-secondary px-2 py-0.5 font-sans text-[11px] text-muted-foreground"
+                      >
+                        {uc}
+                      </span>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {/* Grounded Fork Button (Pinned to Bottom of Slide) */}
+              {/* Custom Variants Grid (if custom) */}
+              {activeDossier.isCustom && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex shrink-0 items-center justify-between px-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-heading text-xs font-semibold text-foreground">
+                        Variants
+                      </span>
+                      <span className="rounded-[6px] bg-secondary px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
+                        {activeDossier.variants?.length ?? 0}
+                      </span>
+                    </div>
+                    <span className="font-sans text-[10px] text-muted-foreground">
+                      2x: open slide
+                    </span>
+                  </div>
+
+                  {/* Clean 1:1 Squircle 2-Column Grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {(activeDossier.variants ?? []).map((v) => {
+                      const isSelected = activePresetId === v.id
+                      const subVariantCount = v.variants?.length ?? 0
+
+                      return (
+                        <div
+                          key={v.id}
+                          className="group relative flex w-full flex-col"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActivePresetId(v.id)
+                              setActiveEngine(v.engine)
+                            }}
+                            onDoubleClick={() => {
+                              setNavStack({
+                                level: 2,
+                                curveId: activeDossier.id,
+                                variantId: v.id,
+                              })
+                            }}
+                            title={`${v.name} · Click to audition · Double-click to open slide`}
+                            className={cn(
+                              "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
+                              isSelected
+                                ? "bg-foreground text-background"
+                                : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            )}
+                          >
+                            {/* Inner Mini Graph Box (Clean 1:1 Squircle Screen) */}
+                            <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-2">
+                              {subVariantCount > 0 && (
+                                <span className="pointer-events-none absolute top-1.5 left-2 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
+                                  +{subVariantCount}
+                                </span>
+                              )}
+
+                              <MiniGraph
+                                mode={v.engine}
+                                bezier={v.bezier}
+                                spring={v.spring}
+                                className={cn(
+                                  "h-full w-full stroke-2 transition-colors",
+                                  isSelected
+                                    ? "stroke-foreground"
+                                    : "stroke-muted-foreground group-hover:stroke-foreground"
+                                )}
+                              />
+                            </div>
+
+                            {/* Grounded Name Strip Snug Underneath */}
+                            <div className="flex h-5 w-full items-center justify-center px-1">
+                              <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
+                                {v.name}
+                              </span>
+                            </div>
+                          </button>
+
+                          {/* Quick open button on hover (Top-Right of Inner Box) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setNavStack({
+                                level: 2,
+                                curveId: activeDossier.id,
+                                variantId: v.id,
+                              })
+                            }}
+                            title={`Open ${v.name} slide`}
+                            className="absolute top-2 right-2 z-10 flex size-4.5 cursor-pointer items-center justify-center rounded-[5px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                          >
+                            <HugeiconsIcon
+                              icon={ArrowUpRight01Icon}
+                              className="size-2.5"
+                            />
+                          </button>
+                        </div>
+                      )
+                    })}
+
+                    {/* Action Tile: + Add Variant (Clean 1:1 Squircle) */}
+                    <button
+                      type="button"
+                      onClick={handleAddVariant}
+                      title="Add variant"
+                      className="group flex w-full cursor-pointer flex-col items-center rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                    >
+                      <div className="relative flex aspect-square w-full items-center justify-center rounded-[9px] bg-background p-2">
+                        <HugeiconsIcon
+                          icon={PlusSignIcon}
+                          className="size-5 text-muted-foreground group-hover:text-foreground"
+                        />
+                      </div>
+                      <div className="flex h-5 w-full items-center justify-center px-1">
+                        <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
+                          + Add Variant
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* TIER 3: PINNED BOTTOM ACTION CTA (shrink-0) */}
+            {!activeDossier.isCustom && (
+              <div className="shrink-0 border-t border-muted bg-background pt-2">
                 <button
                   type="button"
                   onClick={() => handleForkPreset(activeDossier.id)}
-                  className="mt-auto flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-foreground px-3 font-heading text-xs font-semibold text-background transition-transform active:scale-95"
+                  className="flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
                 >
                   <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
-                  <span>Fork to Custom Preset</span>
+                  <span>Customize Parameters</span>
                 </button>
               </div>
             )}
@@ -894,8 +1083,8 @@ export function PresetCatalog({
 
               {/* Variant Description */}
               {currentVariant.desc && (
-                <p className="font-sans text-xs leading-relaxed text-foreground">
-                  &ldquo;{currentVariant.desc}&rdquo;
+                <p className="font-sans text-xs leading-relaxed text-muted-foreground">
+                  {currentVariant.desc}
                 </p>
               )}
 
