@@ -17,46 +17,30 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { ActivePresetMeta } from "../stage-1-types"
+import { useStudioStore, useActiveDossier } from "@/store/useStudioStore"
 import { Slider as SatisSlider } from "./satis-slider"
 
-interface TimelineConsoleProps {
-  isTimelineOpen: boolean
-  isPlaying: boolean
-  setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>
-  activePresetMeta: ActivePresetMeta
-  scrubProgress: number
-  setScrubProgress: (val: number) => void
-  setIsScrubbing: (val: boolean) => void
-  isLooping: boolean
-  setIsLooping: React.Dispatch<React.SetStateAction<boolean>>
-  playbackSpeed: number
-  setPlaybackSpeed: (speed: number) => void
-  isReducedMotion: boolean
-  setIsReducedMotion: React.Dispatch<React.SetStateAction<boolean>>
-  setAnimKey: React.Dispatch<React.SetStateAction<number>>
-}
+export function TimelineConsole() {
+  const isTimelineOpen = useStudioStore((s) => s.isTimelineOpen)
+  const isPlaying = useStudioStore((s) => s.isPlaying)
+  const setIsPlaying = useStudioStore((s) => s.setIsPlaying)
+  const togglePlayback = useStudioStore((s) => s.togglePlayback)
+  const triggerAudition = useStudioStore((s) => s.triggerAudition)
+  const scrubProgress = useStudioStore((s) => s.scrubProgress)
+  const setScrubProgress = useStudioStore((s) => s.setScrubProgress)
+  const setIsScrubbing = useStudioStore((s) => s.setIsScrubbing)
+  const isLooping = useStudioStore((s) => s.isLooping)
+  const setIsLooping = useStudioStore((s) => s.setIsLooping)
+  const playbackSpeed = useStudioStore((s) => s.playbackSpeed)
+  const setPlaybackSpeed = useStudioStore((s) => s.setPlaybackSpeed)
+  const isReducedMotion = useStudioStore((s) => s.isReducedMotion)
+  const setIsReducedMotion = useStudioStore((s) => s.setIsReducedMotion)
 
-export function TimelineConsole({
-  isTimelineOpen,
-  isPlaying,
-  setIsPlaying,
-  activePresetMeta,
-  scrubProgress,
-  setScrubProgress,
-  setIsScrubbing,
-  isLooping,
-  setIsLooping,
-  playbackSpeed,
-  setPlaybackSpeed,
-  isReducedMotion,
-  setIsReducedMotion,
-  setAnimKey,
-}: TimelineConsoleProps) {
-  const currentMs = Math.round(
-    (scrubProgress / 100) * (activePresetMeta.duration || 320)
-  )
-  const totalMs = activePresetMeta.duration || 320
+  const activeDossier = useActiveDossier()
+  const duration = activeDossier.duration || 320
+
+  const currentMs = Math.round((scrubProgress / 100) * duration)
+  const totalMs = duration
 
   const handleScrubChange = React.useCallback(
     (val: number) => {
@@ -74,35 +58,19 @@ export function TimelineConsole({
     setIsScrubbing(false)
   }, [setIsScrubbing])
 
-  const handleReplay = React.useCallback(() => {
-    setAnimKey((k) => k + 1)
-    setScrubProgress(0)
-    setIsPlaying(true)
-  }, [setAnimKey, setScrubProgress, setIsPlaying])
-
-  const handleTogglePlay = React.useCallback(() => {
-    setIsPlaying((prev) => {
-      if (!prev && scrubProgress >= 100) {
-        setAnimKey((k) => k + 1)
-        setScrubProgress(0)
-      }
-      return !prev
-    })
-  }, [scrubProgress, setAnimKey, setScrubProgress, setIsPlaying])
-
   return (
     <AnimatePresence initial={false}>
       {isTimelineOpen && (
         <motion.div
-          key="block-6-wrapper"
+          key="timeline-console-wrapper"
           initial={{ height: 0, opacity: 0 }}
           animate={{
             height: "auto",
             opacity: 1,
             transition: {
               type: "spring",
-              stiffness: 450,
-              damping: 38,
+              stiffness: 400,
+              damping: 34,
               mass: 0.8,
             },
           }}
@@ -117,11 +85,28 @@ export function TimelineConsole({
           className="shrink-0 overflow-hidden"
         >
           <TooltipProvider delayDuration={150}>
-            <section
-              aria-label="Block 6: Master Precision Timeline Dock"
+            <motion.section
+              initial={{ y: 20 }}
+              animate={{
+                y: 0,
+                transition: {
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 34,
+                  mass: 0.8,
+                },
+              }}
+              exit={{
+                y: 16,
+                transition: {
+                  duration: 0.18,
+                  ease: [0.4, 0, 1, 1],
+                },
+              }}
+              aria-label="Master Precision Timeline Dock"
               className="flex w-full shrink-0 flex-col gap-3 rounded-[20px] bg-background p-3.5 px-4 transition-colors select-none"
             >
-              {/* Row 1: Full-Width Satisium Reimagined Slider (Option A: inline layout) */}
+              {/* Row 1: Full-Width Satisium Reimagined Slider */}
               <div
                 className="flex w-full items-center"
                 onPointerDown={handlePointerDown}
@@ -151,7 +136,7 @@ export function TimelineConsole({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={handleTogglePlay}
+                        onClick={togglePlayback}
                         aria-label={
                           isPlaying ? "Pause animation" : "Play animation"
                         }
@@ -179,7 +164,7 @@ export function TimelineConsole({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={handleReplay}
+                        onClick={triggerAudition}
                         aria-label="Replay from Origin"
                         className="flex size-7 cursor-pointer items-center justify-center rounded-[8px] bg-muted text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95"
                       >
@@ -205,7 +190,7 @@ export function TimelineConsole({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => setIsLooping((l) => !l)}
+                        onClick={() => setIsLooping(!isLooping)}
                         aria-label="Toggle continuous loop"
                         className={cn(
                           "flex size-7 cursor-pointer items-center justify-center rounded-[8px] transition-colors active:scale-95",
@@ -253,7 +238,7 @@ export function TimelineConsole({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => setIsReducedMotion((m) => !m)}
+                        onClick={() => setIsReducedMotion(!isReducedMotion)}
                         aria-label="Toggle reduced motion accessibility simulation"
                         className={cn(
                           "flex size-7 cursor-pointer items-center justify-center rounded-[8px] transition-colors active:scale-95",
@@ -289,7 +274,7 @@ export function TimelineConsole({
                   </div>
                 </div>
               </div>
-            </section>
+            </motion.section>
           </TooltipProvider>
         </motion.div>
       )}

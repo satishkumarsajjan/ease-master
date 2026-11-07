@@ -1,32 +1,23 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Cancel01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ROUTES } from "@/lib/routes"
 import { cn } from "@/lib/utils"
-import { EaseDossier } from "../stage-1-types"
+import { resolveEase } from "@/components/studio/domain/studio-kinetics"
+import { useStudioStore } from "@/store/useStudioStore"
 
-interface CompareQueueSlabProps {
-  compareQueue: string[]
-  setCompareQueue: (updater: string[] | ((prev: string[]) => string[])) => void
-  activePresetId: string
-  isCurrentCurveQueued: boolean
-  toggleCompareQueue: () => void
-  resolveEase: (id: string) => EaseDossier | undefined
-  className?: string
-}
+export function CompareQueueSlab({ className }: { className?: string }) {
+  const compareQueue = useStudioStore((s) => s.compareQueue)
+  const activePresetId = useStudioStore((s) => s.activeCurveId)
+  const customCurves = useStudioStore((s) => s.customCurves)
+  const toggleCompare = useStudioStore((s) => s.toggleCompare)
+  const removeFromCompare = useStudioStore((s) => s.removeFromCompare)
+  const clearCompareQueue = useStudioStore((s) => s.clearCompareQueue)
+  const setMode = useStudioStore((s) => s.setMode)
 
-export function CompareQueueSlab({
-  compareQueue,
-  setCompareQueue,
-  activePresetId,
-  isCurrentCurveQueued,
-  toggleCompareQueue,
-  resolveEase,
-  className,
-}: CompareQueueSlabProps) {
+  const isCurrentCurveQueued = compareQueue.includes(activePresetId)
+
   const listRef = React.useRef<HTMLDivElement>(null)
   const [scrollState, setScrollState] = React.useState<{
     canScrollUp: boolean
@@ -50,12 +41,10 @@ export function CompareQueueSlab({
     })
   }, [])
 
-  // Re-check scroll metrics whenever the queue items change
   React.useEffect(() => {
     updateScrollState()
   }, [compareQueue, updateScrollState])
 
-  // Observe container resizes (e.g. window resize or layout flex)
   React.useEffect(() => {
     const el = listRef.current
     if (!el) return
@@ -70,7 +59,6 @@ export function CompareQueueSlab({
     return () => ro.disconnect()
   }, [updateScrollState])
 
-  // Dynamic alpha mask: fades edges only when scrollable content extends beyond view
   const maskStyle = React.useMemo<React.CSSProperties>(() => {
     const { canScrollUp, canScrollDown } = scrollState
     if (!canScrollUp && !canScrollDown) {
@@ -94,17 +82,13 @@ export function CompareQueueSlab({
     }
   }, [scrollState])
 
-  const handleRemove = (curveId: string) => {
-    setCompareQueue((prev) => prev.filter((id) => id !== curveId))
-  }
-
   const handleClearAll = () => {
-    setCompareQueue([])
+    clearCompareQueue()
   }
 
   return (
     <section
-      aria-label="Block 8: Compare Queue"
+      aria-label="Compare Queue"
       className={cn(
         "flex h-[200px] shrink-0 flex-col rounded-[20px] bg-background p-4 transition-colors select-none",
         className
@@ -154,7 +138,7 @@ export function CompareQueueSlab({
           </div>
         ) : (
           compareQueue.map((curveId) => {
-            const dossier = resolveEase(curveId)
+            const dossier = resolveEase(curveId, customCurves)
             const name = dossier?.name ?? curveId
             const isCurrent = curveId === activePresetId
 
@@ -172,7 +156,7 @@ export function CompareQueueSlab({
 
                 <button
                   type="button"
-                  onClick={() => handleRemove(curveId)}
+                  onClick={() => removeFromCompare(curveId)}
                   aria-label={`Remove ${name} from queue`}
                   className="flex size-3.5 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground active:scale-95"
                 >
@@ -188,7 +172,7 @@ export function CompareQueueSlab({
       <div className="mt-auto flex shrink-0 items-center gap-2 pt-2">
         <button
           type="button"
-          onClick={toggleCompareQueue}
+          onClick={() => toggleCompare(activePresetId)}
           className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
         >
           <span>
@@ -196,13 +180,14 @@ export function CompareQueueSlab({
           </span>
         </button>
 
-        <Link
-          href={ROUTES.stage3}
+        <button
+          type="button"
+          onClick={() => setMode("compare")}
           className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
         >
           <span>Duel</span>
           <HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
-        </Link>
+        </button>
       </div>
     </section>
   )

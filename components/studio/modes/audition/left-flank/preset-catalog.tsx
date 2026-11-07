@@ -7,53 +7,70 @@ import {
   Search01Icon,
   Cancel01Icon,
   PlusSignIcon,
+  Delete02Icon,
+  Edit02Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { MiniGraph } from "@/components/ui/mini-graph"
 import { BEZIER_PRESETS, SPRING_PRESETS } from "@/core/presets"
 import { BezierConfig, SpringConfig } from "@/core/types"
 import { cn } from "@/lib/utils"
-import { CustomEase, EaseDossier, StackLevel } from "../stage-1-types"
 import {
   BEZIER_FAMILIES,
   SPRING_FAMILIES,
   POPULAR_PRESET_IDS,
-} from "../stage-1-curves"
+} from "@/components/studio/domain/studio-curves"
+import { resolveEase } from "@/components/studio/domain/studio-kinetics"
+import { useStudioStore } from "@/store/useStudioStore"
 import { PresetCurveStage } from "./preset-curve-stage"
 
-interface PresetCatalogProps {
-  activeEngine: "bezier" | "spring"
-  setActiveEngine: (engine: "bezier" | "spring") => void
-  activePresetId: string
-  setActivePresetId: (id: string) => void
-  customCurves: CustomEase[]
-  setCustomCurves: React.Dispatch<React.SetStateAction<CustomEase[]>>
-  navStack: StackLevel
-  setNavStack: React.Dispatch<React.SetStateAction<StackLevel>>
-  resolveEase: (id: string) => EaseDossier | undefined
-  triggerSingleAnimation: () => void
-}
+export function PresetCatalog() {
+  const activeEngine = useStudioStore((s) => s.activeEngine)
+  const activePresetId = useStudioStore((s) => s.activeCurveId)
+  const customCurves = useStudioStore((s) => s.customCurves)
+  const navStack = useStudioStore((s) => s.navStack)
+  const selectEase = useStudioStore((s) => s.selectEase)
+  const setNavStack = useStudioStore((s) => s.setNavStack)
+  const forkCurve = useStudioStore((s) => s.forkCurve)
+  const forkFromCustom = useStudioStore((s) => s.forkFromCustom)
+  const promoteVariantToRoot = useStudioStore((s) => s.promoteVariantToRoot)
+  const addVariant = useStudioStore((s) => s.addVariant)
+  const addFlavor = useStudioStore((s) => s.addFlavor)
+  const renameCurve = useStudioStore((s) => s.renameCurve)
+  const deleteCustomCurve = useStudioStore((s) => s.deleteCustomCurve)
+  const deleteVariant = useStudioStore((s) => s.deleteVariant)
+  const deleteFlavor = useStudioStore((s) => s.deleteFlavor)
 
-export function PresetCatalog({
-  activeEngine,
-  setActiveEngine,
-  activePresetId,
-  setActivePresetId,
-  customCurves,
-  setCustomCurves,
-  navStack,
-  setNavStack,
-  resolveEase,
-  triggerSingleAnimation,
-}: PresetCatalogProps) {
   const [searchQuery, setSearchQuery] = React.useState<string>("")
   const [catalogFilter, setCatalogFilter] = React.useState<"all" | "popular">(
     "all"
   )
 
-  const activeDossier = React.useMemo(() => {
-    return navStack.level === 1 ? resolveEase(navStack.curveId) : undefined
-  }, [navStack, resolveEase])
+  const [isEditingTitle, setIsEditingTitle] = React.useState(false)
+  const [titleEditValue, setTitleEditValue] = React.useState("")
+
+  const [isEditingVariantTitle, setIsEditingVariantTitle] =
+    React.useState(false)
+  const [variantTitleEditValue, setVariantTitleEditValue] = React.useState("")
+
+  const handleSaveTitle = () => {
+    if (activeDossier && titleEditValue.trim()) {
+      renameCurve(activeDossier.id, titleEditValue)
+    }
+    setIsEditingTitle(false)
+  }
+
+  const handleSaveVariantTitle = () => {
+    if (currentVariant && variantTitleEditValue.trim()) {
+      renameCurve(currentVariant.id, variantTitleEditValue)
+    }
+    setIsEditingVariantTitle(false)
+  }
+
+  const activeDossier =
+    navStack.level === 1
+      ? resolveEase(navStack.curveId, customCurves)
+      : undefined
 
   const currentCurve =
     navStack.level !== 0
@@ -87,18 +104,24 @@ export function PresetCatalog({
     const maxScroll = scrollHeight - clientHeight
     const hasOverflow = maxScroll > 2
 
-    setDetailScrollState({
-      canScrollUp: hasOverflow && scrollTop > 2,
-      canScrollDown: hasOverflow && scrollTop < maxScroll - 2,
+    const canScrollUp = hasOverflow && scrollTop > 2
+    const canScrollDown = hasOverflow && scrollTop < maxScroll - 2
+
+    setDetailScrollState((prev) => {
+      if (
+        prev.canScrollUp === canScrollUp &&
+        prev.canScrollDown === canScrollDown
+      ) {
+        return prev
+      }
+      return { canScrollUp, canScrollDown }
     })
   }, [])
 
-  // Re-check scroll metrics whenever active dossier or navigation stack changes
   React.useEffect(() => {
     updateDetailScrollState()
-  }, [activeDossier, navStack, updateDetailScrollState])
+  }, [navStack, updateDetailScrollState])
 
-  // Observe container resizes (e.g. window resize or layout flex)
   React.useEffect(() => {
     const el = detailScrollRef.current
     if (!el) return
@@ -113,7 +136,6 @@ export function PresetCatalog({
     return () => ro.disconnect()
   }, [updateDetailScrollState])
 
-  // Dynamic alpha mask: fades edges only when scrollable content extends beyond view
   const detailMaskStyle = React.useMemo<React.CSSProperties>(() => {
     const { canScrollUp, canScrollDown } = detailScrollState
     if (!canScrollUp && !canScrollDown) {
@@ -202,130 +224,11 @@ export function PresetCatalog({
     return { groups, totalCount }
   }, [activeEngine, searchQuery, catalogFilter])
 
-  const handleCustomCurveClick = (curve: CustomEase) => {
-    setActivePresetId(curve.id)
-    setActiveEngine(curve.engine)
-    triggerSingleAnimation()
-  }
-
-  const idCounterRef = React.useRef(1)
-  const getUniqueId = React.useCallback((prefix: string) => {
-    idCounterRef.current += 1
-    return `${prefix}-${idCounterRef.current}`
-  }, [])
-
-  const handleForkPreset = React.useCallback(
-    (presetId: string) => {
-      const dossier = resolveEase(presetId)
-      if (!dossier) return
-      const newCustomId = getUniqueId(`custom-${dossier.id}`)
-      const newCustom: CustomEase = {
-        id: newCustomId,
-        name: `${dossier.name} (Custom)`,
-        label: "Main",
-        parentPreset: dossier.name,
-        engine: dossier.engine,
-        values: dossier.values,
-        bezier: dossier.bezier ? { ...dossier.bezier } : undefined,
-        spring: dossier.spring ? { ...dossier.spring } : undefined,
-        duration: dossier.duration,
-        desc: `Custom branch of ${dossier.name}`,
-        guidance: dossier.kinetics.choreographyLaw,
-        targetSettle: dossier.kinetics.timingSweetSpot,
-        variants: [],
-      }
-      setCustomCurves((prev) => [newCustom, ...prev])
-      setActivePresetId(newCustom.id)
-      setActiveEngine(newCustom.engine)
-      setNavStack({ level: 1, curveId: newCustom.id })
-    },
-    [
-      resolveEase,
-      getUniqueId,
-      setCustomCurves,
-      setActivePresetId,
-      setActiveEngine,
-      setNavStack,
-    ]
-  )
-
-  const handleAddVariant = React.useCallback(() => {
-    if (!currentCurve) return
-    const newIndex = (currentCurve.variants?.length ?? 0) + 1
-    const newVariant: CustomEase = {
-      id: getUniqueId(`${currentCurve.id}-v${newIndex}`),
-      name: `Variant ${newIndex}`,
-      label: `Variant ${newIndex}`,
-      parentPreset: currentCurve.name,
-      engine: currentCurve.engine,
-      values: currentCurve.values,
-      bezier: currentCurve.bezier ? { ...currentCurve.bezier } : undefined,
-      spring: currentCurve.spring ? { ...currentCurve.spring } : undefined,
-      duration: currentCurve.duration,
-      desc: `Branch ${newIndex} of ${currentCurve.name}`,
-    }
-    setCustomCurves((prev) =>
-      prev.map((c) =>
-        c.id === currentCurve.id
-          ? { ...c, variants: [...(c.variants ?? []), newVariant] }
-          : c
-      )
-    )
-    setActivePresetId(newVariant.id)
-    setActiveEngine(newVariant.engine)
-  }, [
-    currentCurve,
-    getUniqueId,
-    setCustomCurves,
-    setActivePresetId,
-    setActiveEngine,
-  ])
-
-  const handleAddFlavor = React.useCallback(() => {
-    if (!currentCurve || !currentVariant) return
-    const newIndex = (currentVariant.variants?.length ?? 0) + 1
-    const newFlavor: CustomEase = {
-      id: getUniqueId(`${currentVariant.id}-f${newIndex}`),
-      name: `Flavor ${newIndex}`,
-      label: `Flavor ${newIndex}`,
-      parentPreset: currentVariant.name,
-      engine: currentVariant.engine,
-      values: currentVariant.values,
-      bezier: currentVariant.bezier ? { ...currentVariant.bezier } : undefined,
-      spring: currentVariant.spring ? { ...currentVariant.spring } : undefined,
-      duration: currentVariant.duration,
-      desc: `Calibrated flavor ${newIndex} of ${currentVariant.name}`,
-    }
-    setCustomCurves((prev) =>
-      prev.map((c) =>
-        c.id === currentCurve.id
-          ? {
-              ...c,
-              variants: (c.variants ?? []).map((v) =>
-                v.id === currentVariant.id
-                  ? { ...v, variants: [...(v.variants ?? []), newFlavor] }
-                  : v
-              ),
-            }
-          : c
-      )
-    )
-    setActivePresetId(newFlavor.id)
-    setActiveEngine(newFlavor.engine)
-  }, [
-    currentCurve,
-    currentVariant,
-    getUniqueId,
-    setCustomCurves,
-    setActivePresetId,
-    setActiveEngine,
-  ])
-
   return (
     <div className="relative min-h-0 w-full flex-1 overflow-hidden">
       {/* LEVEL 0: ROOT CATALOG BLOCK (THE PHYSICAL MONOLITHIC SLAB) */}
       <section
-        aria-label="Block 02: Preset Catalog"
+        aria-label="Preset Catalog"
         className={cn(
           "absolute inset-0 flex flex-col rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
           navStack.level === 0
@@ -362,14 +265,16 @@ export function PresetCatalog({
                   >
                     <button
                       type="button"
-                      onClick={() => handleCustomCurveClick(curve)}
+                      onClick={() => selectEase(curve.id)}
                       onDoubleClick={() =>
-                        setNavStack({ level: 1, curveId: curve.id })
+                        selectEase(curve.id, {
+                          openSlide: true,
+                        })
                       }
                       title={
                         variantCount > 0
-                          ? `${curve.name} · Click to audition · Double-click to expand variants`
-                          : `${curve.name} · Double-click to expand`
+                          ? `${curve.name} · Click to select · Double-click to expand variants`
+                          : `${curve.name} · Click to select · Double-click to expand`
                       }
                       className={cn(
                         "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
@@ -378,9 +283,8 @@ export function PresetCatalog({
                           : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
                       )}
                     >
-                      {/* Inner Mini Graph Box (Sleek Screen with Breathing Room) */}
+                      {/* Inner Mini Graph Box */}
                       <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[8px] bg-background p-1">
-                        {/* Top-Left Variant Badge */}
                         {variantCount > 0 && (
                           <span className="pointer-events-none absolute top-1 left-1.5 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
                             +{variantCount}
@@ -408,12 +312,27 @@ export function PresetCatalog({
                       </div>
                     </button>
 
+                    {/* Delete Custom Curve on Hover (Top-Left of Inner Box) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteCustomCurve(curve.id)
+                      }}
+                      title={`Delete ${curve.name}`}
+                      className="absolute top-1.5 left-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                    >
+                      <HugeiconsIcon icon={Delete02Icon} className="size-2.5" />
+                    </button>
+
                     {/* Quick Inspect Button on Hover (Top-Right of Inner Box) */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setNavStack({ level: 1, curveId: curve.id })
+                        selectEase(curve.id, {
+                          openSlide: true,
+                        })
                       }}
                       title="Open Ease Studio"
                       className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
@@ -437,8 +356,7 @@ export function PresetCatalog({
             <button
               type="button"
               onClick={() => {
-                setActiveEngine("bezier")
-                setActivePresetId("ease")
+                selectEase("ease")
               }}
               className={cn(
                 "h-full flex-1 cursor-pointer rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
@@ -452,8 +370,7 @@ export function PresetCatalog({
             <button
               type="button"
               onClick={() => {
-                setActiveEngine("spring")
-                setActivePresetId("spring-standard")
+                selectEase("button")
               }}
               className={cn(
                 "h-full flex-1 cursor-pointer rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
@@ -597,14 +514,14 @@ export function PresetCatalog({
                             <button
                               type="button"
                               onClick={() => {
-                                setActivePresetId(item.id)
-                                setActiveEngine(activeEngine)
-                                triggerSingleAnimation()
+                                selectEase(item.id)
                               }}
                               onDoubleClick={() =>
-                                setNavStack({ level: 1, curveId: item.id })
+                                selectEase(item.id, {
+                                  openSlide: true,
+                                })
                               }
-                              title={`${item.label} · Click to audition · Double-click to open slide`}
+                              title={`${item.label} · Click to select · Double-click to open slide`}
                               className={cn(
                                 "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
                                 isActive
@@ -623,7 +540,7 @@ export function PresetCatalog({
                                   }
                                   spring={
                                     activeEngine === "spring"
-                                      ? (item.value as SpringConfig)
+                                      ? (item.value as unknown as SpringConfig)
                                       : undefined
                                   }
                                   className={cn(
@@ -648,7 +565,9 @@ export function PresetCatalog({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                setNavStack({ level: 1, curveId: item.id })
+                                selectEase(item.id, {
+                                  openSlide: true,
+                                })
                               }}
                               title={`Open ${item.label} slide`}
                               className="absolute top-1.5 right-1.5 z-10 flex size-4 cursor-pointer items-center justify-center rounded-[4px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
@@ -681,7 +600,7 @@ export function PresetCatalog({
 
       {/* LEVEL 1: EASE STUDIO BLOCK (THE PHYSICAL MONOLITHIC SLAB) */}
       <section
-        aria-label="Block 02: Ease Studio"
+        aria-label="Ease Studio"
         className={cn(
           "absolute inset-0 flex flex-col rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
           navStack.level === 1
@@ -706,12 +625,25 @@ export function PresetCatalog({
                 />
                 <span className="font-heading">Presets</span>
               </button>
-              <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
-                {activeDossier.duration}ms
-              </span>
+
+              <div className="flex items-center gap-1.5">
+                {activeDossier.isCustom && (
+                  <button
+                    type="button"
+                    onClick={() => deleteCustomCurve(activeDossier.id)}
+                    title={`Delete ${activeDossier.name}`}
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-[6px] bg-secondary text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
+                  </button>
+                )}
+                <span className="rounded-[6px] bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                  {activeDossier.duration}ms
+                </span>
+              </div>
             </div>
 
-            {/* TIER 2: SCROLLABLE MIDDLE RUNWAY (flex-1 min-h-0 overflow-y-auto with dynamic CSS alpha mask) */}
+            {/* TIER 2: SCROLLABLE MIDDLE RUNWAY with dynamic CSS alpha mask */}
             <div
               ref={detailScrollRef}
               data-testid="preset-detail-scroll-container"
@@ -719,7 +651,7 @@ export function PresetCatalog({
               style={detailMaskStyle}
               className="no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5"
             >
-              {/* 1:1 Square Kinetic Curve Stage (Self-contained high-performance stage) */}
+              {/* 1:1 Square Kinetic Curve Stage */}
               <PresetCurveStage
                 key={activeDossier.id}
                 curveId={activeDossier.id}
@@ -729,12 +661,58 @@ export function PresetCatalog({
                 spring={activeDossier.spring}
               />
 
-              {/* Title, Taxonomy & Description (Left-aligned) */}
+              {/* Title, Taxonomy & Description */}
               <div className="flex shrink-0 flex-col gap-1 text-left">
                 <div className="flex flex-col gap-0.5">
-                  <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
-                    {activeDossier.name}
-                  </h3>
+                  {isEditingTitle && activeDossier.isCustom ? (
+                    <input
+                      autoFocus
+                      value={titleEditValue}
+                      onChange={(e) => setTitleEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveTitle()
+                        if (e.key === "Escape") setIsEditingTitle(false)
+                      }}
+                      onBlur={handleSaveTitle}
+                      className="h-6 w-full rounded-[6px] bg-muted px-2 font-heading text-sm font-semibold text-foreground focus:outline-none"
+                    />
+                  ) : (
+                    <div className="group/title flex items-center gap-1.5">
+                      <h3
+                        onClick={() => {
+                          if (activeDossier.isCustom) {
+                            setTitleEditValue(activeDossier.name)
+                            setIsEditingTitle(true)
+                          }
+                        }}
+                        className={cn(
+                          "font-heading text-sm font-semibold tracking-tight text-foreground",
+                          activeDossier.isCustom &&
+                            "cursor-pointer underline-offset-4 hover:underline"
+                        )}
+                        title={
+                          activeDossier.isCustom
+                            ? "Click to rename"
+                            : activeDossier.name
+                        }
+                      >
+                        {activeDossier.name}
+                      </h3>
+                      {activeDossier.isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTitleEditValue(activeDossier.name)
+                            setIsEditingTitle(true)
+                          }}
+                          title="Rename preset"
+                          className="flex size-4 cursor-pointer items-center justify-center text-muted-foreground opacity-0 transition-opacity group-hover/title:opacity-100 hover:text-foreground"
+                        >
+                          <HugeiconsIcon icon={Edit02Icon} className="size-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <p className="truncate font-sans text-[11px] text-muted-foreground">
                     {activeDossier.engine === "bezier"
                       ? "Cubic Bézier"
@@ -812,7 +790,7 @@ export function PresetCatalog({
 
                 <div className="border-t border-muted" />
 
-                {/* Kinetic Telemetry Rows: Calm, Balanced Typography */}
+                {/* Kinetic Telemetry Rows */}
                 <div className="flex flex-col gap-1.5 font-sans text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="shrink-0 text-muted-foreground">
@@ -926,8 +904,7 @@ export function PresetCatalog({
                           <button
                             type="button"
                             onClick={() => {
-                              setActivePresetId(v.id)
-                              setActiveEngine(v.engine)
+                              selectEase(v.id)
                             }}
                             onDoubleClick={() => {
                               setNavStack({
@@ -936,7 +913,7 @@ export function PresetCatalog({
                                 variantId: v.id,
                               })
                             }}
-                            title={`${v.name} · Click to audition · Double-click to open slide`}
+                            title={`${v.name} · Click to select · Double-click to open slide`}
                             className={cn(
                               "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
                               isSelected
@@ -944,7 +921,6 @@ export function PresetCatalog({
                                 : "bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground"
                             )}
                           >
-                            {/* Inner Mini Graph Box (Clean 1:1 Squircle Screen) */}
                             <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[9px] bg-background p-2">
                               {subVariantCount > 0 && (
                                 <span className="pointer-events-none absolute top-1.5 left-2 font-sans text-[9px] font-semibold tracking-tight text-muted-foreground">
@@ -965,7 +941,6 @@ export function PresetCatalog({
                               />
                             </div>
 
-                            {/* Grounded Name Strip Snug Underneath */}
                             <div className="flex h-5 w-full items-center justify-center px-1">
                               <span className="truncate font-sans text-[11px] leading-none font-medium tracking-tight">
                                 {v.name}
@@ -973,7 +948,21 @@ export function PresetCatalog({
                             </div>
                           </button>
 
-                          {/* Quick open button on hover (Top-Right of Inner Box) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteVariant(activeDossier.id, v.id)
+                            }}
+                            title={`Delete ${v.name}`}
+                            className="absolute top-2 left-2 z-10 flex size-4.5 cursor-pointer items-center justify-center rounded-[5px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                          >
+                            <HugeiconsIcon
+                              icon={Delete02Icon}
+                              className="size-2.5"
+                            />
+                          </button>
+
                           <button
                             type="button"
                             onClick={(e) => {
@@ -996,10 +985,10 @@ export function PresetCatalog({
                       )
                     })}
 
-                    {/* Action Tile: + Add Variant (Clean 1:1 Squircle) */}
+                    {/* Action Tile: + Add Variant */}
                     <button
                       type="button"
-                      onClick={handleAddVariant}
+                      onClick={() => addVariant(activeDossier.id)}
                       title="Add variant"
                       className="group flex w-full cursor-pointer flex-col items-center rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
                     >
@@ -1021,25 +1010,34 @@ export function PresetCatalog({
             </div>
 
             {/* TIER 3: PINNED BOTTOM ACTION CTA (shrink-0) */}
-            {!activeDossier.isCustom && (
-              <div className="shrink-0 border-t border-muted bg-background pt-2">
+            <div className="shrink-0 border-t border-muted bg-background pt-2">
+              {activeDossier.isCustom ? (
                 <button
                   type="button"
-                  onClick={() => handleForkPreset(activeDossier.id)}
+                  onClick={() => forkFromCustom(activeDossier.id)}
+                  className="flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
+                >
+                  <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+                  <span>Fork as New Preset</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => forkCurve(activeDossier.id)}
                   className="flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
                 >
                   <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
                   <span>Customize Parameters</span>
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </section>
 
       {/* LEVEL 2: VARIANT TUNING BLOCK (THE PHYSICAL MONOLITHIC SLAB) */}
       <section
-        aria-label="Block 02: Variant Tuning"
+        aria-label="Variant Tuning"
         className={cn(
           "absolute inset-0 flex flex-col rounded-[20px] bg-background p-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
           navStack.level === 2
@@ -1066,16 +1064,63 @@ export function PresetCatalog({
                   />
                   <span className="font-heading">{currentCurve.name}</span>
                 </button>
-                <span className="font-sans text-[11px] font-medium text-muted-foreground">
-                  {currentVariant.duration}ms
-                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      deleteVariant(currentCurve.id, currentVariant.id)
+                    }
+                    title={`Delete ${currentVariant.name}`}
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-[6px] bg-secondary text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
+                  </button>
+                  <span className="font-sans text-[11px] font-medium text-muted-foreground">
+                    {currentVariant.duration}ms
+                  </span>
+                </div>
               </div>
 
               {/* Title & Origin Pedigree */}
               <div className="flex shrink-0 flex-col gap-0.5">
-                <h3 className="font-heading text-sm font-semibold tracking-tight text-foreground">
-                  {currentVariant.name}
-                </h3>
+                {isEditingVariantTitle ? (
+                  <input
+                    autoFocus
+                    value={variantTitleEditValue}
+                    onChange={(e) => setVariantTitleEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveVariantTitle()
+                      if (e.key === "Escape") setIsEditingVariantTitle(false)
+                    }}
+                    onBlur={handleSaveVariantTitle}
+                    className="h-6 w-full rounded-[6px] bg-muted px-2 font-heading text-sm font-semibold text-foreground focus:outline-none"
+                  />
+                ) : (
+                  <div className="group/vtitle flex items-center gap-1.5">
+                    <h3
+                      onClick={() => {
+                        setVariantTitleEditValue(currentVariant.name)
+                        setIsEditingVariantTitle(true)
+                      }}
+                      className="cursor-pointer font-heading text-sm font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
+                      title="Click to rename"
+                    >
+                      {currentVariant.name}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVariantTitleEditValue(currentVariant.name)
+                        setIsEditingVariantTitle(true)
+                      }}
+                      title="Rename variant"
+                      className="flex size-4 cursor-pointer items-center justify-center text-muted-foreground opacity-0 transition-opacity group-hover/vtitle:opacity-100 hover:text-foreground"
+                    >
+                      <HugeiconsIcon icon={Edit02Icon} className="size-3" />
+                    </button>
+                  </div>
+                )}
                 <p className="truncate font-sans text-[11px] text-muted-foreground">
                   Branch of {currentCurve.name} · Kinetic Variant
                 </p>
@@ -1118,11 +1163,9 @@ export function PresetCatalog({
                       <button
                         type="button"
                         onClick={() => {
-                          // CLICK ONLY AUDITIONS IT (DOES NOT MUTATE CURRENT VARIANT DOSSIER)
-                          setActivePresetId(sv.id)
-                          setActiveEngine(sv.engine)
+                          selectEase(sv.id)
                         }}
-                        title={`${sv.name} · Click to audition`}
+                        title={`${sv.name} · Click to select`}
                         className={cn(
                           "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
                           isSelected
@@ -1149,6 +1192,26 @@ export function PresetCatalog({
                           </span>
                         </div>
                       </button>
+
+                      {/* Delete Flavor on Hover (Top-Left of Flavor Tile) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteFlavor(
+                            currentCurve.id,
+                            currentVariant.id,
+                            sv.id
+                          )
+                        }}
+                        title={`Delete ${sv.name}`}
+                        className="absolute top-2 left-2 z-10 flex size-4.5 cursor-pointer items-center justify-center rounded-[5px] bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          className="size-2.5"
+                        />
+                      </button>
                     </div>
                   )
                 })}
@@ -1156,7 +1219,7 @@ export function PresetCatalog({
                 {/* Action Tile: + Add Flavor (Clean 1:1 Squircle) */}
                 <button
                   type="button"
-                  onClick={handleAddFlavor}
+                  onClick={() => addFlavor(currentCurve.id, currentVariant.id)}
                   title="Add flavor"
                   className="group flex w-full cursor-pointer flex-col items-center rounded-[12px] bg-muted p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
                 >
@@ -1173,6 +1236,20 @@ export function PresetCatalog({
                   </div>
                 </button>
               </div>
+            </div>
+
+            {/* TIER 3: PROMOTE VARIANT TO STANDALONE PRESET */}
+            <div className="mt-auto shrink-0 border-t border-muted bg-background pt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  promoteVariantToRoot(currentCurve.id, currentVariant.id)
+                }
+                className="flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-secondary px-3.5 font-heading text-xs font-medium text-foreground transition-colors hover:bg-muted active:scale-95"
+              >
+                <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" />
+                <span>Promote to Standalone Preset</span>
+              </button>
             </div>
           </div>
         )}

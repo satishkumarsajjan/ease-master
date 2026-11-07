@@ -26,7 +26,7 @@ export function BrandSlab() {
 
   return (
     <header
-      aria-label="Block 1: Brand and Quick Actions"
+      aria-label="Studio Brand and Quick Actions"
       className="flex shrink-0 flex-col gap-2 select-none"
     >
       {/* BRAND CHASSIS: DUAL-BOX (BOX-IN-BOX) WITH CONCAVE INVERSE FILLETS */}

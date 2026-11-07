@@ -7,7 +7,7 @@ import { MiniGraph } from "@/components/ui/mini-graph"
 import { BezierConfig, SpringConfig } from "@/core/types"
 import { solveSpring } from "@/core/math/spring"
 import { cn } from "@/lib/utils"
-import { solveCubicBezier } from "../stage-1-kinetics"
+import { solveCubicBezier } from "@/components/studio/domain/studio-kinetics"
 
 interface PresetCurveStageProps {
   curveId: string

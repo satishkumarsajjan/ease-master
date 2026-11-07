@@ -1,11 +1,15 @@
 import { BezierConfig, SpringConfig } from "@/core/types"
 
+export type EngineType = "bezier" | "spring"
+export type StudioMode = "audition" | "customize" | "compare"
+export type ViewportMode = "desktop" | "tablet" | "mobile" | "custom"
+
 export interface CustomEase {
   id: string
   name: string
   label?: string
   parentPreset: string
-  engine: "bezier" | "spring"
+  engine: EngineType
   values: string
   bezier?: BezierConfig
   spring?: SpringConfig
@@ -32,7 +36,7 @@ export interface EaseDossier {
   name: string
   origin: string
   isCustom: boolean
-  engine: "bezier" | "spring"
+  engine: EngineType
   values: string
   bezier?: BezierConfig
   spring?: SpringConfig
@@ -50,7 +54,8 @@ export interface PresetFamily {
   presetIds: string[]
 }
 
-export type ArchetypeKey = "button"
+export type ArchetypeKey =
+  "button" | "sheet" | "modal" | "toast" | "dropdown" | "carousel"
 
 export interface ArchetypeScenario {
   id: ArchetypeKey
@@ -67,9 +72,20 @@ export type StackLevel =
 export interface ActivePresetMeta {
   name: string
   subtitle?: string
-  engine: "bezier" | "spring"
+  engine: EngineType
   values: string
   bezier?: BezierConfig
   spring?: SpringConfig
   duration: number
+}
+
+export interface StudioSessionCookie {
+  curve?: string
+  engine?: EngineType
+  timeline?: boolean
+  viewport?: ViewportMode
+  width?: number | string
+  scenario?: ArchetypeKey
+  navLevel?: number
+  mode?: StudioMode
 }

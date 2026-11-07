@@ -1,7 +1,12 @@
 import { BezierConfig, SpringConfig } from "@/core/types"
 import { solveSpring } from "@/core/math/spring"
 import { BEZIER_PRESETS, SPRING_PRESETS } from "@/core/presets"
-import { CustomEase, KineticAnatomy, ActivePresetMeta } from "./stage-1-types"
+import {
+  CustomEase,
+  KineticAnatomy,
+  EaseDossier,
+  EngineType,
+} from "./studio-types"
 
 /**
  * High-precision cubic-bezier solver (evaluates y for a given x/t using binary bisection).
@@ -35,10 +40,13 @@ export function solveCubicBezier(
   )
 }
 
+/**
+ * Derives kinetic intelligence and UX choreography rules from curve physics.
+ */
 export function computeKineticIntel(params: {
   id: string
   name: string
-  engine: "bezier" | "spring"
+  engine: EngineType
   description?: string
   bezier?: BezierConfig
   spring?: SpringConfig
@@ -249,7 +257,7 @@ export function computeKineticIntel(params: {
     }
   }
 
-  // Fallback
+  // 3. Fallback
   return {
     role: "Standard Kinetic",
     launchVelocity: "Instant acceleration",
@@ -264,85 +272,151 @@ export function computeKineticIntel(params: {
   }
 }
 
-export function getActivePresetMeta(
-  customCurves: CustomEase[],
-  activePresetId: string,
-  activeEngine: "bezier" | "spring"
-): ActivePresetMeta {
-  // 1. Check customCurves hierarchy
-  for (const c of customCurves) {
-    if (activePresetId === c.id) {
-      return {
-        name: c.name,
-        subtitle: c.desc ?? `Custom · Forked from ${c.parentPreset}`,
-        engine: c.engine,
-        values: c.values,
-        bezier: c.bezier,
-        spring: c.spring,
-        duration: c.duration,
-      }
+/**
+ * Recursively locates a custom curve or any of its nested variants by ID.
+ */
+export function findCustomCurve(
+  id: string,
+  curves: CustomEase[]
+): CustomEase | null {
+  for (const c of curves) {
+    if (c.id === id) return c
+    if (c.variants && c.variants.length > 0) {
+      const match = findCustomCurve(id, c.variants)
+      if (match) return match
     }
-    if (c.variants) {
-      for (const v of c.variants) {
-        if (activePresetId === v.id) {
-          return {
-            name: `${c.name} · ${v.name}`,
-            subtitle: v.desc ?? `Variant · Forked from ${c.name}`,
-            engine: v.engine,
-            values: v.values,
-            bezier: v.bezier,
-            spring: v.spring,
-            duration: v.duration,
-          }
-        }
-        if (v.variants) {
-          for (const sv of v.variants) {
-            if (activePresetId === sv.id) {
-              return {
-                name: `${c.name} · ${v.name} · ${sv.name}`,
-                subtitle: sv.desc ?? `Flavor · Forked from ${v.name}`,
-                engine: sv.engine,
-                values: sv.values,
-                bezier: sv.bezier,
-                spring: sv.spring,
-                duration: sv.duration,
-              }
-            }
-          }
-        }
-      }
+  }
+  return null
+}
+
+/**
+ * Authoritative, engine-agnostic ease resolver.
+ * Searches: Custom Curves Hierarchy -> Bezier Presets -> Spring Presets -> Default Fallback.
+ * Guarantees correct engine detection and kinetic dossier assembly.
+ */
+export function resolveEase(
+  id: string,
+  customCurves: CustomEase[]
+): EaseDossier {
+  // 1. Recursive search in custom curves
+  const custom = findCustomCurve(id, customCurves)
+  if (custom) {
+    const kinetics = computeKineticIntel({
+      id: custom.id,
+      name: custom.name,
+      engine: custom.engine,
+      description: custom.desc,
+      bezier: custom.bezier,
+      spring: custom.spring,
+      custom,
+    })
+    return {
+      id: custom.id,
+      name: custom.name,
+      origin: custom.parentPreset
+        ? `Custom · Forked from ${custom.parentPreset}`
+        : "Custom Curve",
+      isCustom: true,
+      engine: custom.engine,
+      values: custom.values,
+      bezier: custom.bezier,
+      spring: custom.spring,
+      duration: custom.duration,
+      description: custom.desc || "Custom calibrated motion curve",
+      useCases: custom.useCases || [],
+      kinetics,
+      variants: custom.variants,
+      parentPreset: custom.parentPreset,
     }
   }
 
-  // 2. Find in system presets
-  const allPresets = activeEngine === "bezier" ? BEZIER_PRESETS : SPRING_PRESETS
-  const found = allPresets.find((p) => p.id === activePresetId) ?? allPresets[0]
-  const bConf =
-    activeEngine === "bezier" ? (found.value as BezierConfig) : undefined
-  const sConf =
-    activeEngine === "spring" ? (found.value as SpringConfig) : undefined
-  const valuesStr =
-    activeEngine === "bezier" && bConf
-      ? `${bConf.p1.x.toFixed(2)}, ${bConf.p1.y.toFixed(2)}, ${bConf.p2.x.toFixed(2)}, ${bConf.p2.y.toFixed(2)}`
-      : sConf
-        ? `m:${sConf.mass} s:${sConf.stiffness} d:${sConf.damping}`
-        : ""
+  // 2. Search in BEZIER_PRESETS
+  const bezierPreset = BEZIER_PRESETS.find((p) => p.id === id)
+  if (bezierPreset) {
+    const b = bezierPreset.value
+    const values = `${b.p1.x.toFixed(2)}, ${b.p1.y.toFixed(2)}, ${b.p2.x.toFixed(2)}, ${b.p2.y.toFixed(2)}`
+    const kinetics = computeKineticIntel({
+      id: bezierPreset.id,
+      name: bezierPreset.label,
+      engine: "bezier",
+      description: bezierPreset.description,
+      bezier: b,
+    })
+    return {
+      id: bezierPreset.id,
+      name: bezierPreset.label,
+      origin: "Standard Bezier Preset",
+      isCustom: false,
+      engine: "bezier",
+      values,
+      bezier: b,
+      duration: kinetics.optimalDuration || 320,
+      description: bezierPreset.description,
+      useCases: bezierPreset.useCases,
+      kinetics,
+    }
+  }
 
+  // 3. Search in SPRING_PRESETS
+  const springPreset = SPRING_PRESETS.find((p) => p.id === id)
+  if (springPreset) {
+    const s = springPreset.value
+    const values = `m:${s.mass} s:${s.stiffness} d:${s.damping}`
+    const kinetics = computeKineticIntel({
+      id: springPreset.id,
+      name: springPreset.label,
+      engine: "spring",
+      description: springPreset.description,
+      spring: s,
+    })
+    return {
+      id: springPreset.id,
+      name: springPreset.label,
+      origin: "Physical Spring Preset",
+      isCustom: false,
+      engine: "spring",
+      values,
+      spring: s,
+      duration: kinetics.optimalDuration || 350,
+      description: springPreset.description,
+      useCases: springPreset.useCases,
+      kinetics,
+    }
+  }
+
+  // 4. Default Fallback (Standard Ease)
+  const fallback = BEZIER_PRESETS[0]
+  const b = fallback.value
+  const values = `${b.p1.x.toFixed(2)}, ${b.p1.y.toFixed(2)}, ${b.p2.x.toFixed(2)}, ${b.p2.y.toFixed(2)}`
+  const kinetics = computeKineticIntel({
+    id: fallback.id,
+    name: fallback.label,
+    engine: "bezier",
+    description: fallback.description,
+    bezier: b,
+  })
   return {
-    name: found.label,
-    subtitle: found.description,
-    engine: activeEngine,
-    values: valuesStr,
-    bezier: bConf,
-    spring: sConf,
+    id: fallback.id,
+    name: fallback.label,
+    origin: "Default Ease",
+    isCustom: false,
+    engine: "bezier",
+    values,
+    bezier: b,
     duration: 320,
+    description: fallback.description,
+    useCases: fallback.useCases,
+    kinetics,
   }
 }
 
+/**
+ * Calculates the current animation value [0..1] at a given progress percentage [0..100].
+ */
 export function getEasedValue(
   progressPct: number,
   meta: {
-    engine: "bezier" | "spring"
+    engine: EngineType
     bezier?: BezierConfig
     spring?: SpringConfig
   },
