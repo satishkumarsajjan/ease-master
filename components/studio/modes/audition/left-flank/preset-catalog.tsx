@@ -265,17 +265,16 @@ export function PresetCatalog() {
                   >
                     <button
                       type="button"
-                      onClick={() => selectEase(curve.id, { audition: true })}
+                      onClick={() => selectEase(curve.id)}
                       onDoubleClick={() =>
                         selectEase(curve.id, {
-                          audition: true,
                           openSlide: true,
                         })
                       }
                       title={
                         variantCount > 0
-                          ? `${curve.name} · Click to audition · Double-click to expand variants`
-                          : `${curve.name} · Click to audition · Double-click to expand`
+                          ? `${curve.name} · Click to select · Double-click to expand variants`
+                          : `${curve.name} · Click to select · Double-click to expand`
                       }
                       className={cn(
                         "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
@@ -332,7 +331,6 @@ export function PresetCatalog() {
                       onClick={(e) => {
                         e.stopPropagation()
                         selectEase(curve.id, {
-                          audition: true,
                           openSlide: true,
                         })
                       }}
@@ -358,7 +356,7 @@ export function PresetCatalog() {
             <button
               type="button"
               onClick={() => {
-                selectEase("ease", { audition: true })
+                selectEase("ease")
               }}
               className={cn(
                 "h-full flex-1 cursor-pointer rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
@@ -372,7 +370,7 @@ export function PresetCatalog() {
             <button
               type="button"
               onClick={() => {
-                selectEase("button", { audition: true })
+                selectEase("button")
               }}
               className={cn(
                 "h-full flex-1 cursor-pointer rounded-[8px] text-center font-heading text-[11px] font-medium transition-colors",
@@ -516,15 +514,14 @@ export function PresetCatalog() {
                             <button
                               type="button"
                               onClick={() => {
-                                selectEase(item.id, { audition: true })
+                                selectEase(item.id)
                               }}
                               onDoubleClick={() =>
                                 selectEase(item.id, {
-                                  audition: true,
                                   openSlide: true,
                                 })
                               }
-                              title={`${item.label} · Click to audition · Double-click to open slide`}
+                              title={`${item.label} · Click to select · Double-click to open slide`}
                               className={cn(
                                 "relative flex w-full cursor-pointer flex-col items-center rounded-[10px] p-0.5 transition-all",
                                 isActive
@@ -569,7 +566,6 @@ export function PresetCatalog() {
                               onClick={(e) => {
                                 e.stopPropagation()
                                 selectEase(item.id, {
-                                  audition: true,
                                   openSlide: true,
                                 })
                               }}
@@ -908,7 +904,7 @@ export function PresetCatalog() {
                           <button
                             type="button"
                             onClick={() => {
-                              selectEase(v.id, { audition: true })
+                              selectEase(v.id)
                             }}
                             onDoubleClick={() => {
                               setNavStack({
@@ -917,7 +913,7 @@ export function PresetCatalog() {
                                 variantId: v.id,
                               })
                             }}
-                            title={`${v.name} · Click to audition · Double-click to open slide`}
+                            title={`${v.name} · Click to select · Double-click to open slide`}
                             className={cn(
                               "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
                               isSelected
@@ -1167,9 +1163,9 @@ export function PresetCatalog() {
                       <button
                         type="button"
                         onClick={() => {
-                          selectEase(sv.id, { audition: true })
+                          selectEase(sv.id)
                         }}
-                        title={`${sv.name} · Click to audition`}
+                        title={`${sv.name} · Click to select`}
                         className={cn(
                           "group relative flex w-full cursor-pointer flex-col items-center rounded-[12px] p-1 transition-all",
                           isSelected
