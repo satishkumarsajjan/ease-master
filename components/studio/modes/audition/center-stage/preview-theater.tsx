@@ -4,14 +4,13 @@ import * as React from "react"
 import { motion } from "motion/react"
 import { ChevronDoubleCloseIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Button } from "@/components/ui/button"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { PreviewBackground } from "@/components/previewer/preview-background"
 import { cn } from "@/lib/utils"
-import { getEasedValue } from "@/components/studio/domain/studio-kinetics"
-import { useStudioStore, useActiveDossier } from "@/store/useStudioStore"
+import { useStudioStore } from "@/store/useStudioStore"
 import { AuditionToolbar } from "./audition-toolbar"
+import { ModalScenario } from "./scenarios/modal-scenario"
 
 /** Smallest usable preview stage, in px. Also the hit area of the drag handle. */
 const MIN_STAGE_W = 320
@@ -21,18 +20,6 @@ export function PreviewTheater() {
   const setPreviewWidth = useStudioStore((s) => s.setPreviewWidth)
   const setViewportMode = useStudioStore((s) => s.setViewportMode)
   const animKey = useStudioStore((s) => s.animKey)
-  const buttonPressed = useStudioStore((s) => s.buttonPressed)
-  const setButtonPressed = useStudioStore((s) => s.setButtonPressed)
-  const isReducedMotion = useStudioStore((s) => s.isReducedMotion)
-  const triggerAudition = useStudioStore((s) => s.triggerAudition)
-  const scrubProgress = useStudioStore((s) => s.scrubProgress)
-
-  const activeDossier = useActiveDossier()
-  const currentEasedA = getEasedValue(
-    scrubProgress,
-    activeDossier,
-    isReducedMotion
-  )
 
   const containerRef = React.useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = React.useState(false)
@@ -75,18 +62,6 @@ export function PreviewTheater() {
     }
   }, [isDragging, setPreviewWidth, setViewportMode])
 
-  const pressScale = buttonPressed
-    ? 0.94
-    : isReducedMotion
-      ? 1
-      : 0.94 + Math.max(-0.15, Math.min(0.2, currentEasedA * 0.06))
-
-  const pressTranslateY = buttonPressed
-    ? 2
-    : isReducedMotion
-      ? 0
-      : (1 - Math.min(1, Math.max(0, currentEasedA))) * 2
-
   return (
     <TooltipProvider delayDuration={150}>
       <section
@@ -121,23 +96,8 @@ export function PreviewTheater() {
                   isDragging && "pointer-events-none select-none"
                 )}
               >
-                <div className="flex h-full min-h-full w-full flex-1 flex-col items-center justify-center p-6 select-none">
-                  <Button
-                    size="default"
-                    onPointerDown={() => setButtonPressed(true)}
-                    onPointerUp={() => {
-                      setButtonPressed(false)
-                      triggerAudition()
-                    }}
-                    onClick={triggerAudition}
-                    style={{
-                      transform: `translateY(${pressTranslateY}px) scale(${pressScale})`,
-                    }}
-                    className="will-change-transform select-none"
-                  >
-                    Button
-                  </Button>
-                </div>
+                <ModalScenario />
+
                 <ScrollBar orientation="vertical" />
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>

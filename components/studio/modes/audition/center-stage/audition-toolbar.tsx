@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils"
 import { ArchetypeKey } from "@/components/studio/domain/studio-types"
 import { ARCHETYPE_SCENARIOS } from "@/components/studio/domain/studio-curves"
+import { resolveEase } from "@/components/studio/domain/studio-kinetics"
 import { useStudioStore, ViewportMode } from "@/store/useStudioStore"
 
 export function AuditionToolbar() {
@@ -35,6 +36,10 @@ export function AuditionToolbar() {
   const setPreviewWidth = useStudioStore((s) => s.setPreviewWidth)
   const activeScenarioKey = useStudioStore((s) => s.activeScenarioKey)
   const setActiveScenarioKey = useStudioStore((s) => s.setActiveScenarioKey)
+  const scenarioSlots = useStudioStore((s) => s.scenarioSlots)
+  const activeSlot = useStudioStore((s) => s.activeSlot)
+  const setActiveSlot = useStudioStore((s) => s.setActiveSlot)
+  const customCurves = useStudioStore((s) => s.customCurves)
   const triggerAudition = useStudioStore((s) => s.triggerAudition)
   const isTimelineOpen = useStudioStore((s) => s.isTimelineOpen)
   const toggleTimeline = useStudioStore((s) => s.toggleTimeline)
@@ -44,6 +49,21 @@ export function AuditionToolbar() {
   const setMode = useStudioStore((s) => s.setMode)
 
   const isCurrentCurveQueued = compareQueue.includes(activeCurveId)
+
+  const currentSlot = scenarioSlots[activeScenarioKey]
+  const isLifecycleComponent =
+    activeScenarioKey === "sheet" ||
+    activeScenarioKey === "modal" ||
+    activeScenarioKey === "toast" ||
+    activeScenarioKey === "dropdown"
+
+  const enterCurve = React.useMemo(() => {
+    return resolveEase(currentSlot?.enterId || "ease-out", customCurves)
+  }, [currentSlot?.enterId, customCurves])
+
+  const exitCurve = React.useMemo(() => {
+    return resolveEase(currentSlot?.exitId || "ease-in", customCurves)
+  }, [currentSlot?.exitId, customCurves])
 
   const handleViewportChange = (mode: ViewportMode) => {
     setViewportMode(mode)
@@ -138,6 +158,91 @@ export function AuditionToolbar() {
           ))}
         </SelectContent>
       </Select>
+
+      {/* Kinetic Slot Badges */}
+      {isLifecycleComponent ? (
+        <div className="flex items-center gap-1 rounded-[10px] bg-muted p-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setActiveSlot("enter")}
+                className={cn(
+                  "flex h-7 max-w-[115px] cursor-pointer items-center gap-1.5 rounded-[8px] px-2 font-mono text-[11px] font-semibold transition-colors",
+                  activeSlot === "enter"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <span className="font-heading text-[10px] font-bold tracking-wider uppercase">
+                  In:
+                </span>
+                <span className="truncate">{enterCurve.name}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <span>Entrance Curve: {enterCurve.name} (Click to inspect)</span>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setActiveSlot("exit")}
+                className={cn(
+                  "flex h-7 max-w-[125px] cursor-pointer items-center gap-1.5 rounded-[8px] px-2 font-mono text-[11px] font-semibold transition-colors",
+                  activeSlot === "exit"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <span className="font-heading text-[10px] font-bold tracking-wider uppercase">
+                  Out:
+                </span>
+                <span className="truncate">
+                  {currentSlot?.exitId
+                    ? exitCurve.name
+                    : activeSlot === "exit"
+                      ? exitCurve.name
+                      : "Unassigned"}
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <span>
+                {currentSlot?.exitId
+                  ? `Exit Curve: ${exitCurve.name} (Click to inspect/change)`
+                  : "Exit Curve: Unassigned (Click to arm exit curve)"}
+              </span>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      ) : (
+        <div className="flex items-center rounded-[10px] bg-muted p-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setActiveSlot("enter")}
+                className="flex h-7 max-w-[130px] cursor-pointer items-center gap-1.5 rounded-[8px] bg-foreground px-2 font-mono text-[11px] font-semibold text-background transition-colors"
+              >
+                <span className="font-heading text-[10px] font-bold tracking-wider text-background uppercase">
+                  {activeScenarioKey === "carousel" ? "Travel:" : "Tactile:"}
+                </span>
+                <span className="truncate">{enterCurve.name}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <span>
+                {activeScenarioKey === "carousel"
+                  ? `Spatial Travel Ease: ${enterCurve.name}`
+                  : `Tactile Feedback: ${enterCurve.name}`}
+              </span>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
 
       <div className="h-4 w-px bg-muted" />
 
