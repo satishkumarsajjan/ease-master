@@ -10,6 +10,8 @@ export interface BestPracticeSpec {
   name: string
   guideline: string
   targetDuration: string
+  targetDurationIn?: string
+  targetDurationOut?: string
   bounce: string
   recommended?: RecommendedCurve[]
   recommendedIn?: RecommendedCurve[]
@@ -75,10 +77,12 @@ export const BEST_PRACTICES: Record<string, BestPracticeSpec> = {
   },
   modal: {
     id: "modal",
-    name: "Modal Dialog",
+    name: "Modal",
     guideline:
-      "Modals require asymmetric choreography: progressive scale deceleration on arrival (~260ms), and rapid acceleration on dismissal (~180ms) to clear the viewport immediately.",
+      "Modals feel most natural with asymmetric motion: progressive scale deceleration on arrival, and swift acceleration on dismissal.",
     targetDuration: "In: 220–320ms · Out: 160–220ms",
+    targetDurationIn: "220–320ms",
+    targetDurationOut: "160–220ms",
     bounce: "Minimal (≤ 2%)",
     recommendedIn: [
       {

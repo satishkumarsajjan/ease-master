@@ -9,6 +9,8 @@ import {
   GitCompareIcon,
   SlidersHorizontalIcon,
   ArrowUpRight01Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { motion, LayoutGroup } from "motion/react"
@@ -133,17 +135,17 @@ export function AuditionToolbar() {
         </div>
       </LayoutGroup>
 
-      <div className="h-4 w-px bg-muted" />
+      <div className="h-4 w-px bg-border" />
 
       {/* Component Selector Dropdown */}
       <Select
         value={activeScenarioKey}
         onValueChange={(val) => setActiveScenarioKey(val as ArchetypeKey)}
       >
-        <SelectTrigger className="h-8 w-[105px] rounded-[10px] border-none bg-muted px-2.5 text-xs font-medium text-foreground hover:bg-secondary focus:ring-0 [&>span]:truncate">
-          <SelectValue placeholder="Button">
+        <SelectTrigger className="h-8 w-auto min-w-0 gap-1.5 rounded-[10px] border-none bg-muted px-2.5 text-[10px] font-medium text-foreground hover:bg-secondary focus:ring-0 md:text-[10px] [&_svg]:size-3 [&_svg]:text-muted-foreground">
+          <SelectValue placeholder="Modal">
             {ARCHETYPE_SCENARIOS.find((s) => s.id === activeScenarioKey)
-              ?.name ?? "Button"}
+              ?.name ?? "Modal"}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -151,7 +153,7 @@ export function AuditionToolbar() {
             <SelectItem
               key={scenario.id}
               value={scenario.id}
-              className="text-xs"
+              className="text-[11px]"
             >
               {scenario.name}
             </SelectItem>
@@ -161,63 +163,111 @@ export function AuditionToolbar() {
 
       {/* Kinetic Slot Badges */}
       {isLifecycleComponent ? (
-        <div className="flex items-center gap-1 rounded-[10px] bg-muted p-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setActiveSlot("enter")}
-                className={cn(
-                  "flex h-7 max-w-[115px] cursor-pointer items-center gap-1.5 rounded-[8px] px-2 font-mono text-[11px] font-semibold transition-colors",
-                  activeSlot === "enter"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <span className="font-heading text-[10px] font-bold tracking-wider uppercase">
-                  In:
+        <LayoutGroup id="audition-slots">
+          <div className="relative flex items-center rounded-[10px] bg-muted p-0.5">
+            {/* Entrance Slot (In) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setActiveSlot("enter")}
+                  className={cn(
+                    "relative z-10 flex h-7 cursor-pointer items-center gap-1.5 rounded-[8px] px-2.5 font-sans text-[11px] tracking-tight transition-colors",
+                    activeSlot === "enter"
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {activeSlot === "enter" && (
+                    <motion.div
+                      layoutId="audition-slot-pill"
+                      transition={{
+                        type: "spring",
+                        stiffness: 350,
+                        damping: 30,
+                      }}
+                      className="absolute inset-0 rounded-[8px] bg-background shadow-xs"
+                    />
+                  )}
+                  <span className="relative z-20 flex items-center gap-1.5">
+                    <HugeiconsIcon
+                      icon={ArrowDown01Icon}
+                      className={cn(
+                        "size-3 shrink-0",
+                        activeSlot === "enter"
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      )}
+                    />
+                    <span className="truncate">{enterCurve.name}</span>
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <span>
+                  Entrance (In) ·{" "}
+                  <span className="font-medium">{enterCurve.name}</span>
                 </span>
-                <span className="truncate">{enterCurve.name}</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              <span>Entrance Curve: {enterCurve.name} (Click to inspect)</span>
-            </TooltipContent>
-          </Tooltip>
+              </TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setActiveSlot("exit")}
-                className={cn(
-                  "flex h-7 max-w-[125px] cursor-pointer items-center gap-1.5 rounded-[8px] px-2 font-mono text-[11px] font-semibold transition-colors",
-                  activeSlot === "exit"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <span className="font-heading text-[10px] font-bold tracking-wider uppercase">
-                  Out:
-                </span>
-                <span className="truncate">
-                  {currentSlot?.exitId
-                    ? exitCurve.name
-                    : activeSlot === "exit"
+            {/* Exit Slot (Out) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setActiveSlot("exit")}
+                  className={cn(
+                    "relative z-10 flex h-7 cursor-pointer items-center gap-1.5 rounded-[8px] px-2.5 font-sans text-[11px] tracking-tight transition-colors",
+                    activeSlot === "exit"
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {activeSlot === "exit" && (
+                    <motion.div
+                      layoutId="audition-slot-pill"
+                      transition={{
+                        type: "spring",
+                        stiffness: 350,
+                        damping: 30,
+                      }}
+                      className="absolute inset-0 rounded-[8px] bg-background shadow-xs"
+                    />
+                  )}
+                  <span className="relative z-20 flex items-center gap-1.5">
+                    <HugeiconsIcon
+                      icon={ArrowUp01Icon}
+                      className={cn(
+                        "size-3 shrink-0",
+                        activeSlot === "exit"
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      )}
+                    />
+                    <span className="truncate">
+                      {currentSlot?.exitId
+                        ? exitCurve.name
+                        : activeSlot === "exit"
+                          ? exitCurve.name
+                          : "Unassigned"}
+                    </span>
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <span>
+                  Exit (Out) ·{" "}
+                  <span className="font-medium">
+                    {currentSlot?.exitId || activeSlot === "exit"
                       ? exitCurve.name
                       : "Unassigned"}
+                  </span>
                 </span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              <span>
-                {currentSlot?.exitId
-                  ? `Exit Curve: ${exitCurve.name} (Click to inspect/change)`
-                  : "Exit Curve: Unassigned (Click to arm exit curve)"}
-              </span>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </LayoutGroup>
       ) : (
         <div className="flex items-center rounded-[10px] bg-muted p-0.5">
           <Tooltip>
@@ -225,26 +275,28 @@ export function AuditionToolbar() {
               <button
                 type="button"
                 onClick={() => setActiveSlot("enter")}
-                className="flex h-7 max-w-[130px] cursor-pointer items-center gap-1.5 rounded-[8px] bg-foreground px-2 font-mono text-[11px] font-semibold text-background transition-colors"
+                className="flex h-7 cursor-pointer items-center gap-1.5 rounded-[8px] bg-background px-2.5 font-sans text-[11px] font-medium tracking-tight text-foreground shadow-xs transition-colors"
               >
-                <span className="font-heading text-[10px] font-bold tracking-wider text-background uppercase">
-                  {activeScenarioKey === "carousel" ? "Travel:" : "Tactile:"}
-                </span>
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  className="size-3 text-foreground"
+                />
                 <span className="truncate">{enterCurve.name}</span>
               </button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
               <span>
                 {activeScenarioKey === "carousel"
-                  ? `Spatial Travel Ease: ${enterCurve.name}`
-                  : `Tactile Feedback: ${enterCurve.name}`}
+                  ? "Travel Ease"
+                  : "Tactile Feedback"}
+                : {enterCurve.name}
               </span>
             </TooltipContent>
           </Tooltip>
         </div>
       )}
 
-      <div className="h-4 w-px bg-muted" />
+      <div className="h-4 w-px bg-border" />
 
       {/* Replay Animation Action */}
       <Tooltip>

@@ -269,7 +269,7 @@ export const POPULAR_PRESET_IDS = new Set<string>([
 export const ARCHETYPE_SCENARIOS: ArchetypeScenario[] = [
   {
     id: "modal",
-    name: "Modal Dialog",
+    name: "Modal",
     role: "Focused Surface",
     description:
       "Centered dialog surface with progressive scale deceleration on arrival and swift acceleration on dismissal.",

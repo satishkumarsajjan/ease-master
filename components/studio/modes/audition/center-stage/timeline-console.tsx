@@ -63,14 +63,14 @@ export function TimelineConsole() {
       {isTimelineOpen && (
         <motion.div
           key="timeline-console-wrapper"
-          initial={false}
+          initial={{ height: 0, opacity: 0 }}
           animate={{
             height: "auto",
             opacity: 1,
             transition: {
               type: "spring",
-              stiffness: 450,
-              damping: 38,
+              stiffness: 400,
+              damping: 34,
               mass: 0.8,
             },
           }}
@@ -85,7 +85,24 @@ export function TimelineConsole() {
           className="shrink-0 overflow-hidden"
         >
           <TooltipProvider delayDuration={150}>
-            <section
+            <motion.section
+              initial={{ y: 20 }}
+              animate={{
+                y: 0,
+                transition: {
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 34,
+                  mass: 0.8,
+                },
+              }}
+              exit={{
+                y: 16,
+                transition: {
+                  duration: 0.18,
+                  ease: [0.4, 0, 1, 1],
+                },
+              }}
               aria-label="Master Precision Timeline Dock"
               className="flex w-full shrink-0 flex-col gap-3 rounded-[20px] bg-background p-3.5 px-4 transition-colors select-none"
             >
@@ -257,7 +274,7 @@ export function TimelineConsole() {
                   </div>
                 </div>
               </div>
-            </section>
+            </motion.section>
           </TooltipProvider>
         </motion.div>
       )}
