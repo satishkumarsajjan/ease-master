@@ -54,7 +54,8 @@ export interface PresetFamily {
   presetIds: string[]
 }
 
-export type ArchetypeKey = "button"
+export type ArchetypeKey =
+  "button" | "sheet" | "modal" | "toast" | "dropdown" | "carousel"
 
 export interface ArchetypeScenario {
   id: ArchetypeKey

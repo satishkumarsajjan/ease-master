@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useStudioStore, useActiveDossier } from "@/store/useStudioStore"
+import { resolveEase } from "@/components/studio/domain/studio-kinetics"
 import { AuditionView } from "./modes/audition/audition-view"
 
 export function StudioShell() {
@@ -21,9 +22,22 @@ export function StudioShell() {
   const setMode = useStudioStore((s) => s.setMode)
   const playbackSpeed = useStudioStore((s) => s.playbackSpeed)
   const isLooping = useStudioStore((s) => s.isLooping)
+  const scenarioPhase = useStudioStore((s) => s.scenarioPhase)
+  const activeScenarioKey = useStudioStore((s) => s.activeScenarioKey)
+  const scenarioSlots = useStudioStore((s) => s.scenarioSlots)
+  const customCurves = useStudioStore((s) => s.customCurves)
 
   const activeDossier = useActiveDossier()
-  const duration = activeDossier.duration || 320
+  const currentSlot = scenarioSlots[activeScenarioKey]
+  const exitCurveId = currentSlot?.exitId
+  const currentPhaseCurve = React.useMemo(() => {
+    if (scenarioPhase === "exit" && exitCurveId) {
+      return resolveEase(exitCurveId, customCurves)
+    }
+    return activeDossier
+  }, [scenarioPhase, exitCurveId, customCurves, activeDossier])
+
+  const duration = currentPhaseCurve.duration || 320
 
   // Scrub progress ref for stable RAF reading
   const scrubProgressRef = React.useRef(scrubProgress)

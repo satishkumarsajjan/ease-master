@@ -108,6 +108,9 @@ describe("Studio Kinetics Resolver", () => {
 
 describe("Studio Zustand Store", () => {
   beforeEach(() => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.clear()
+    }
     useStudioStore.setState({
       mode: "audition",
       activeCurveId: "modal-sheet",
@@ -119,6 +122,13 @@ describe("Studio Zustand Store", () => {
       animKey: 0,
       compareQueue: [],
       isTimelineOpen: false,
+      activeScenarioKey: "modal",
+      activeSlot: "enter",
+      scenarioSlots: {
+        modal: {},
+      },
+      scenarioOpen: false,
+      scenarioPhase: "enter",
     })
   })
 
@@ -311,13 +321,11 @@ describe("Studio Zustand Store", () => {
   it("deletes a variant and falls back to parent curve", () => {
     const store = createStudioStore()
     store.getState().selectEase("modal-sheet-exit", { openSlide: false })
-    store
-      .getState()
-      .setNavStack({
-        level: 2,
-        curveId: "modal-sheet",
-        variantId: "modal-sheet-exit",
-      })
+    store.getState().setNavStack({
+      level: 2,
+      curveId: "modal-sheet",
+      variantId: "modal-sheet-exit",
+    })
 
     store.getState().deleteVariant("modal-sheet", "modal-sheet-exit")
     const state = store.getState()
@@ -379,5 +387,74 @@ describe("Studio Zustand Store", () => {
     expect(promoted?.name).toBe("Standalone Exit")
     expect(promoted?.parentPreset).toContain("Modal Sheet")
     expect(state.navStack).toEqual({ level: 1, curveId: newId })
+  })
+
+  describe("Scenario Choreography & Kinetic Slots", () => {
+    it("initializes modal scenario slots with clean slate (no forced defaults)", () => {
+      const store = createStudioStore()
+      const state = store.getState()
+      expect(state.scenarioSlots.modal).toEqual({})
+      expect(state.activeScenarioKey).toBe("modal")
+      expect(state.activeSlot).toBe("enter")
+    })
+
+    it("assigns curve to active slot when selecting ease", () => {
+      const store = createStudioStore()
+      expect(store.getState().activeSlot).toBe("enter")
+
+      // Select modal-sheet for entrance
+      store.getState().selectEase("modal-sheet")
+      expect(store.getState().scenarioSlots.modal.enterId).toBe("modal-sheet")
+      expect(store.getState().activeCurveId).toBe("modal-sheet")
+
+      // Switch to exit slot and select ease-out
+      store.getState().setActiveSlot("exit")
+      store.getState().selectEase("modal-sheet-exit")
+      expect(store.getState().scenarioSlots.modal.exitId).toBe(
+        "modal-sheet-exit"
+      )
+      expect(store.getState().activeCurveId).toBe("modal-sheet-exit")
+    })
+
+    it("synchronizes activeCurveId when switching between assigned slots", () => {
+      const store = createStudioStore()
+      store.getState().assignCurveToSlot("power2-out", "enter", "modal")
+      store.getState().assignCurveToSlot("expo-in", "exit", "modal")
+
+      // Switch to enter
+      store.getState().setActiveSlot("enter")
+      expect(store.getState().activeSlot).toBe("enter")
+      expect(store.getState().activeCurveId).toBe("power2-out")
+
+      // Switch to exit
+      store.getState().setActiveSlot("exit")
+      expect(store.getState().activeSlot).toBe("exit")
+      expect(store.getState().activeCurveId).toBe("expo-in")
+    })
+
+    it("controls openScenario, closeScenario, and toggleScenario lifecycles", () => {
+      const store = createStudioStore()
+      expect(store.getState().scenarioOpen).toBe(false)
+      expect(store.getState().scenarioPhase).toBe("enter")
+
+      // Open scenario
+      store.getState().openScenario()
+      expect(store.getState().scenarioOpen).toBe(true)
+      expect(store.getState().scenarioPhase).toBe("enter")
+      expect(store.getState().isPlaying).toBe(true)
+      expect(store.getState().scrubProgress).toBe(0)
+
+      // Close scenario
+      store.getState().closeScenario()
+      expect(store.getState().scenarioOpen).toBe(false)
+      expect(store.getState().scenarioPhase).toBe("exit")
+      expect(store.getState().isPlaying).toBe(true)
+      expect(store.getState().scrubProgress).toBe(0)
+
+      // Toggle scenario
+      store.getState().toggleScenario()
+      expect(store.getState().scenarioOpen).toBe(true)
+      expect(store.getState().scenarioPhase).toBe("enter")
+    })
   })
 })

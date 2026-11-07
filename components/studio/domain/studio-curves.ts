@@ -268,9 +268,10 @@ export const POPULAR_PRESET_IDS = new Set<string>([
 
 export const ARCHETYPE_SCENARIOS: ArchetypeScenario[] = [
   {
-    id: "button",
-    name: "Button",
-    role: "Tactile Rebound",
-    description: "Clean shadcn UI button tactile press & physics rebound",
+    id: "modal",
+    name: "Modal Dialog",
+    role: "Focused Surface",
+    description:
+      "Centered dialog surface with progressive scale deceleration on arrival and swift acceleration on dismissal.",
   },
 ]
